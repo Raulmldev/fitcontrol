@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../Model/user.dart';
 import '../Model/meal.dart';
+import '../Control/food_recognition_service.dart';
 
 /// Pantalla para registrar comidas y alimentos
 class LogMealScreen extends StatefulWidget {
@@ -16,6 +18,11 @@ class LogMealScreen extends StatefulWidget {
 class _LogMealScreenState extends State<LogMealScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
+
+  // Variables para IA y cámara
+  final ImagePicker _picker = ImagePicker();
+  final FoodRecognitionService _foodRecognitionService = FoodRecognitionService();
+  bool _isAnalyzing = false;
 
   // Controladores para la comida
   final _nameController = TextEditingController();
@@ -54,6 +61,28 @@ class _LogMealScreenState extends State<LogMealScreen> {
   double get _totalFat => _foods.fold(0, (sum, food) => sum + food.fat);
   double get _totalFiber => _foods.fold(0, (sum, food) => sum + food.fiber);
 
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar el servicio de reconocimiento de comida
+    _foodRecognitionService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _foodRecognitionService.dispose();
+    _nameController.dispose();
+    _notesController.dispose();
+    _foodNameController.dispose();
+    _quantityController.dispose();
+    _caloriesController.dispose();
+    _proteinController.dispose();
+    _carbsController.dispose();
+    _fatController.dispose();
+    _fiberController.dispose();
+    super.dispose();
+  }
+
   void _addFood() {
     if (_foodNameController.text.isEmpty ||
         _caloriesController.text.isEmpty) {
@@ -91,6 +120,136 @@ class _LogMealScreenState extends State<LogMealScreen> {
     _carbsController.clear();
     _fatController.clear();
     _fiberController.clear();
+  }
+
+  Future<void> _takePictureAndAnalyze() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _isAnalyzing = true;
+      });
+
+      // Mostrar diálogo de carga
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Analizando imagen con IA...'),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Esto puede tomar unos segundos',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      }
+
+      // Llamar al servicio de reconocimiento de comida local (pasa XFile directamente para compatibilidad multiplataforma)
+      final result = await _foodRecognitionService.analyzeFoodImage(image);
+
+      // Cerrar diálogo de carga
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Validar confianza del resultado
+      if (result != null && result.containsKey('confidence')) {
+        final confidence = result['confidence'] as double;
+        if (confidence < 0.5) {
+          // Mostrar mensaje de que no se detectó con confianza suficiente
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No se pudo identificar el alimento con certeza suficiente. Por favor ingresa los datos manualmente.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
+        }
+      }
+
+      if (result != null && mounted) {
+        // Llenar los campos del formulario con los valores detectados
+        setState(() {
+          if (result.containsKey('name')) {
+            _foodNameController.text = result['name']?.toString() ?? '';
+          }
+          if (result.containsKey('quantity')) {
+            _quantityController.text = result['quantity']?.toString() ?? '100';
+          }
+          if (result.containsKey('calories')) {
+            _caloriesController.text = result['calories']?.toString() ?? '';
+          }
+          if (result.containsKey('protein')) {
+            _proteinController.text = result['protein']?.toString() ?? '';
+          }
+          if (result.containsKey('carbs')) {
+            _carbsController.text = result['carbs']?.toString() ?? '';
+          }
+          if (result.containsKey('fat')) {
+            _fatController.text = result['fat']?.toString() ?? '';
+          }
+          if (result.containsKey('fiber')) {
+            _fiberController.text = result['fiber']?.toString() ?? '';
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('¡Análisis completado! Datos detectados por IA.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo analizar la imagen. Intenta de nuevo.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      // Cerrar diálogo de carga si está abierto
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al analizar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzing = false;
+        });
+      }
+    }
   }
 
   void _removeFood(int index) {
@@ -236,6 +395,64 @@ class _LogMealScreenState extends State<LogMealScreen> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            // Card para detección con IA
+            Card(
+              color: Colors.blue.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.camera_alt, color: Colors.blue.shade700),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Detectar con IA',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Toma una foto del plato',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isAnalyzing ? null : _takePictureAndAnalyze,
+                        icon: _isAnalyzing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.camera_alt),
+                        label: Text(_isAnalyzing ? 'Analizando...' : 'Abrir Cámara'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.blue.shade200,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             TextFormField(
