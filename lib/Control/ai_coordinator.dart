@@ -229,7 +229,11 @@ $response
     _currentConversation!.addMessage(userMessage);
 
     // Procesar con el agente seleccionado
-    final response = await selectedAgent.processQuery(userQuery, _currentUser!);
+    final response = await selectedAgent.processQuery(
+      userQuery,
+      _currentUser!,
+      history: _currentConversation?.messages,
+    );
 
     _emitEvent(
       CoordinatorEvent(

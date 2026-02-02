@@ -24,102 +24,130 @@ class DashboardScreen extends StatelessWidget {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.chat),
-            onPressed: () => Navigator.pushNamed(context, '/ai_chat'),
-            tooltip: 'Asistente IA',
-          ),
-          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: onLogout,
             tooltip: 'Cerrar sesión',
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Saludo personalizado
-            _buildWelcomeSection(),
-            const SizedBox(height: 24),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+          final isMedium = constraints.maxWidth > 600;
 
-            // Resumen de estadísticas
-            _buildStatsOverview(),
-            const SizedBox(height: 24),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Saludo personalizado
+                _buildWelcomeSection(context),
+                const SizedBox(height: 24),
 
-            // Grid de módulos principales
-            _buildModulesGrid(context),
-            const SizedBox(height: 24),
-
-            // Sección del equipo de IA
-            _buildAIExpertTeamSection(context),
-            const SizedBox(height: 24),
-
-            // Recomendaciones del día
-            _buildDailyRecommendations(),
-          ],
-        ),
+                if (isWide)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            _buildTodoSection(context),
+                            const SizedBox(height: 24),
+                            _buildUpcomingSection(context),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            _buildModulesGrid(context, 2),
+                            const SizedBox(height: 24),
+                            _buildAnalysisSection(context),
+                            const SizedBox(height: 24),
+                            _buildAIExpertTeamSection(context),
+                            const SizedBox(height: 24),
+                            _buildDailyRecommendations(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTodoSection(context),
+                      const SizedBox(height: 24),
+                      _buildUpcomingSection(context),
+                      const SizedBox(height: 24),
+                      _buildModulesGrid(context, isMedium ? 2 : 2),
+                      const SizedBox(height: 24),
+                      _buildAnalysisSection(context),
+                      const SizedBox(height: 24),
+                      _buildAIExpertTeamSection(context),
+                      const SizedBox(height: 24),
+                      _buildDailyRecommendations(),
+                    ],
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed:
+            () => Navigator.pushNamed(
+              context,
+              '/ai_chat',
+              arguments: {'user': user},
+            ),
+        icon: const Icon(Icons.chat),
+        label: const Text('Hablar con IA'),
+        backgroundColor: Colors.deepPurple,
       ),
     );
   }
 
-  Widget _buildWelcomeSection() {
+  Widget _buildWelcomeSection(BuildContext context) {
     return Card(
       elevation: 4,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.deepPurple,
-                  child: Text(
-                    user.name.substring(0, 1).toUpperCase(),
+            CircleAvatar(
+              radius: 30,
+              backgroundColor: Colors.deepPurple,
+              child: Text(
+                user.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 24,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '¡Hola, ${user.name.split(' ')[0]}!',
                     style: const TextStyle(
                       fontSize: 24,
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '¡Hola, ${user.name.split(' ')[0]}!',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Tu equipo de 15 expertos IA está listo para ayudarte',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Tu equipo de expertos está listo.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildQuickStat('Edad', '${user.age} años'),
-                _buildQuickStat('IMC', user.bmi.toStringAsFixed(1)),
-                _buildQuickStat('Peso', '${user.weight} kg'),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -127,177 +155,165 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickStat(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatsOverview() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Resumen de Hoy',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.restaurant,
-                title: 'Calorías',
-                value: '1,850 / ${user.targetCalories}',
-                color: Colors.green,
-                progress: 1850 / user.targetCalories,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.fitness_center,
-                title: 'Ejercicio',
-                value: '45 min',
-                color: Colors.blue,
-                progress: 0.75,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.favorite,
-                title: 'Pasos',
-                value: '6,240 / 10,000',
-                color: Colors.red,
-                progress: 0.62,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.water_drop,
-                title: 'Agua',
-                value: '1.5 / 2.5 L',
-                color: Colors.cyan,
-                progress: 0.60,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    required double progress,
-  }) {
+  Widget _buildTodoSection(BuildContext context) {
     return Card(
-      elevation: 2,
+      color: Colors.orange.shade50,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            const Row(
               children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 8),
+                Icon(Icons.today, color: Colors.orange),
+                SizedBox(width: 8),
                 Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  'Para Hoy',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              backgroundColor: color.withValues(alpha: 0.2),
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-            ),
+            const SizedBox(height: 12),
+            _buildCheckItem('Entrenamiento: Pierna y Glúteo', false),
+            _buildCheckItem('Comida: Pollo con vegetales', true),
+            _buildCheckItem('Medir presión arterial', false),
+            _buildCheckItem('Beber 2.5L de agua', false),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildModulesGrid(BuildContext context) {
+  Widget _buildCheckItem(String title, bool isCompleted) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: isCompleted ? Colors.green : Colors.grey,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                decoration: isCompleted ? TextDecoration.lineThrough : null,
+                color: isCompleted ? Colors.grey : Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUpcomingSection(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.calendar_month, color: Colors.blueGrey),
+                SizedBox(width: 8),
+                Text(
+                  'Próximos Días',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildUpcomingItem('Mañana', 'Cardio ligero + Yoga'),
+            const Divider(),
+            _buildUpcomingItem('Miércoles', 'Descanso activo'),
+            const Divider(),
+            _buildUpcomingItem('Jueves', 'Torso / Brazo'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingItem(String day, String activity) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(day, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(activity, style: TextStyle(color: Colors.grey.shade700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModulesGrid(BuildContext context, int crossAxisCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Módulos',
+          'Seguimiento por Áreas',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
+          crossAxisCount: crossAxisCount,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.3,
+          childAspectRatio: 1.5,
           children: [
             _buildModuleCard(
               context,
               icon: Icons.restaurant_menu,
               title: 'Nutrición',
-              subtitle: 'Comidas y dieta',
+              subtitle: 'Plan de comidas',
               color: Colors.green,
-              onTap: () {},
+              onTap:
+                  () => Navigator.pushNamed(
+                    context,
+                    '/nutrition',
+                    arguments: {'user': user},
+                  ),
             ),
             _buildModuleCard(
               context,
               icon: Icons.fitness_center,
               title: 'Ejercicios',
-              subtitle: 'Rutinas y plan',
+              subtitle: 'Rutinas',
               color: Colors.blue,
-              onTap: () {},
+              onTap:
+                  () => Navigator.pushNamed(
+                    context,
+                    '/workout',
+                    arguments: {'user': user},
+                  ),
             ),
             _buildModuleCard(
               context,
               icon: Icons.favorite,
               title: 'Salud',
-              subtitle: 'Parámetros vitales',
+              subtitle: 'Signos vitales',
               color: Colors.red,
-              onTap: () {},
+              onTap:
+                  () => Navigator.pushNamed(
+                    context,
+                    '/health',
+                    arguments: {'user': user},
+                  ),
             ),
             _buildModuleCard(
               context,
-              icon: Icons.shopping_cart,
-              title: 'Compras',
-              subtitle: 'Lista inteligente',
-              color: Colors.orange,
-              onTap: () {},
+              icon: Icons.people,
+              title: 'Equipo IA',
+              subtitle: 'Tus expertos',
+              color: Colors.deepPurple,
+              onTap: () => Navigator.pushNamed(context, '/ai_team'),
             ),
           ],
         ),
@@ -332,7 +348,7 @@ class DashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, color: Colors.white, size: 32),
-              const SizedBox(height: 8),
+              const Spacer(),
               Text(
                 title,
                 style: const TextStyle(
@@ -347,6 +363,28 @@ class DashboardScreen extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisSection(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed:
+            () => Navigator.pushNamed(
+              context,
+              '/conclusion',
+              arguments: {'user': user},
+            ),
+        icon: const Icon(Icons.assessment),
+        label: const Text('VER CONCLUSIÓN Y REPORTE INTEGRAL'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.indigo,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -414,7 +452,9 @@ class DashboardScreen extends StatelessWidget {
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.2),
+        backgroundColor: color.withValues(
+          alpha: 0.2,
+        ), // Fixed deprecated withValues
         child: Icon(icon, color: color),
       ),
       title: Text(agent.name),
@@ -478,7 +518,9 @@ class DashboardScreen extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: color.withValues(alpha: 0.2),
+            backgroundColor: color.withValues(
+              alpha: 0.2,
+            ), // Fixed deprecated withValues
             child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(width: 12),

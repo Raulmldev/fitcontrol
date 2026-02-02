@@ -3,6 +3,10 @@ import 'View/login.dart';
 import 'View/dashboard_screen.dart';
 import 'View/ai_chat_screen.dart';
 import 'View/ai_expert_team_screen.dart';
+import 'View/nutrition_screen.dart';
+import 'View/workout_screen.dart';
+import 'View/health_screen.dart';
+import 'View/conclusion_screen.dart';
 import 'Model/user.dart';
 
 void main() {
@@ -46,33 +50,61 @@ class MyApp extends StatelessWidget {
       },
       onGenerateRoute: (settings) {
         // Rutas que requieren parámetros
-        switch (settings.name) {
-          case '/dashboard':
-            final args = settings.arguments as Map<String, dynamic>?;
-            if (args != null && args['user'] != null) {
-              return MaterialPageRoute(
-                builder:
-                    (context) => DashboardScreen(
-                      user: args['user'] as User,
-                      onLogout: args['onLogout'] as VoidCallback,
-                    ),
-              );
-            }
-            return null;
-
-          case '/ai_chat':
-            final args = settings.arguments as Map<String, dynamic>?;
-            if (args != null && args['user'] != null) {
-              return MaterialPageRoute(
-                builder: (context) => AIChatScreen(user: args['user'] as User),
-              );
-            }
-            // Si no hay args, redirigir al login
-            return MaterialPageRoute(builder: (context) => const LoginScreen());
-
-          default:
-            return null;
+        if (settings.name == '/dashboard') {
+          final args = settings.arguments as Map<String, dynamic>?;
+          if (args != null && args['user'] != null) {
+            return MaterialPageRoute(
+              builder:
+                  (context) => DashboardScreen(
+                    user: args['user'] as User,
+                    onLogout: args['onLogout'] as VoidCallback,
+                  ),
+            );
+          }
+          return null;
         }
+
+        // Rutas que reciben al usuario como argumento
+        final args = settings.arguments as Map<String, dynamic>?;
+        final user = args?['user'] as User?;
+
+        if (user != null) {
+          switch (settings.name) {
+            case '/ai_chat':
+              return MaterialPageRoute(
+                builder: (context) => AIChatScreen(user: user),
+              );
+            case '/nutrition':
+              return MaterialPageRoute(
+                builder: (context) => NutritionScreen(user: user),
+              );
+            case '/workout':
+              return MaterialPageRoute(
+                builder: (context) => WorkoutScreen(user: user),
+              );
+            case '/health':
+              return MaterialPageRoute(
+                builder: (context) => HealthScreen(user: user),
+              );
+            case '/conclusion':
+              return MaterialPageRoute(
+                builder: (context) => ConclusionScreen(user: user),
+              );
+          }
+        }
+
+        // Si es una ruta protegida y no hay usuario, redirigir al login
+        if ([
+          '/ai_chat',
+          '/nutrition',
+          '/workout',
+          '/health',
+          '/conclusion',
+        ].contains(settings.name)) {
+          return MaterialPageRoute(builder: (context) => const LoginScreen());
+        }
+
+        return null;
       },
     );
   }

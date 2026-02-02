@@ -39,70 +39,7 @@ class NutritionAgent extends AIAgentBase {
         ],
       );
 
-  @override
-  Future<AIAgentMessage> processQuery(UserQuery query, User user) async {
-    final context = _buildNutritionContext(user);
-
-    // Simular procesamiento de IA
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    String response;
-    MessageType messageType = MessageType.text;
-    List<String>? suggestions;
-
-    final queryLower = query.query.toLowerCase();
-
-    if (queryLower.contains('comida') ||
-        queryLower.contains('dieta') ||
-        queryLower.contains('nutrición')) {
-      response = _generateNutritionResponse(query.query, user, context);
-      messageType = MessageType.recommendation;
-      suggestions = [
-        'Ver mi plan de comidas de hoy',
-        'Generar lista de compras',
-        'Recomendaciones para cenar',
-      ];
-    } else if (queryLower.contains('compra') || queryLower.contains('lista')) {
-      response = _generateShoppingResponse(query.query, user);
-      messageType = MessageType.action;
-      suggestions = [
-        'Crear lista de compras semanal',
-        'Optimizar lista actual',
-        'Ver alimentos recomendados',
-      ];
-    } else if (queryLower.contains('calorías') ||
-        queryLower.contains('macro')) {
-      response = _generateCaloriesResponse(user, context);
-      messageType = MessageType.insight;
-    } else {
-      response = '''
-¡Hola! Soy la Dra. Elena Martínez, tu nutricionista personal en FitControl.
-
-Estoy aquí para ayudarte a:
-• Planificar tus comidas diarias de forma equilibrada
-• Crear listas de compras inteligentes basadas en tu dieta
-• Analizar tu ingesta calórica y de nutrientes
-• Adaptar tu nutrición a tus objetivos de salud y ejercicio
-• Coordinarme con tu entrenador personal y tu experto en salud
-
-¿En qué aspecto de tu nutrición puedo ayudarte hoy?
-      ''';
-      suggestions = [
-        'Planificar comidas del día',
-        'Analizar mi ingesta actual',
-        'Crear lista de compras',
-      ];
-    }
-
-    final message = createMessage(
-      content: response,
-      type: messageType,
-      suggestions: suggestions,
-    );
-
-    sendMessage(message);
-    return message;
-  }
+  // Se elimina el override de processQuery para usar la implementación base con DeepSeek
 
   @override
   Future<List<AIAgentMessage>> generateRecommendations(
@@ -213,74 +150,7 @@ Consejo: Bebe 500ml de agua al despertar y distribuye el resto uniformemente dur
 
   // MÉTODOS PRIVADOS DE RESPUESTA
 
-  String _generateNutritionResponse(
-    String query,
-    User user,
-    Map<String, dynamic> context,
-  ) {
-    return '''
-🍎 RECOMENDACIÓN NUTRICIONAL PERSONALIZADA
-
-Basándome en tu perfil (${user.age} años, ${user.activityLevel}):
-
-Tu plan calórico actual: ${user.targetCalories} kcal/día
-IMC: ${user.bmi.toStringAsFixed(1)} (${user.bmiCategory})
-
-RECOMENDACIÓN INMEDIATA:
-Distribuye tus comidas así:
-• Desayuno (25%): ${(user.targetCalories * 0.25).toStringAsFixed(0)} kcal
-• Almuerzo (35%): ${(user.targetCalories * 0.35).toStringAsFixed(0)} kcal
-• Cena (25%): ${(user.targetCalories * 0.25).toStringAsFixed(0)} kcal
-• Snacks (15%): ${(user.targetCalories * 0.15).toStringAsFixed(0)} kcal
-
-¿Te gustaría que coordine con tu entrenador para ajustar la nutrición a tu plan de ejercicios?
-    ''';
-  }
-
-  String _generateShoppingResponse(String query, User user) {
-    return '''
-🛒 GESTIÓN INTELIGENTE DE COMPRAS
-
-Voy a crear una lista de compras optimizada basada en:
-• Tu objetivo: ${user.fitnessGoal}
-• Calorías diarias: ${user.targetCalories} kcal
-• Preferencias: ${user.dietaryPreferences.join(', ')}
-
-La lista incluirá:
-1. Proteínas magras de alta calidad
-2. Carbohidratos complejos
-3. Grasas saludables
-4. Vegetales variados
-5. Suplementos (si aplica)
-
-He coordinado con tu plan de comidas para minimizar desperdicios.
-    ''';
-  }
-
-  String _generateCaloriesResponse(User user, Map<String, dynamic> context) {
-    return '''
-📈 ANÁLISIS CALÓRICO DETALLADO
-
-CÁLCULOS BASALES:
-• TMB (Metabolismo Basal): ${user.bmr.toStringAsFixed(0)} kcal/día
-• TDEE (Gasto Total): ${user.tdee.toStringAsFixed(0)} kcal/día
-• Objetivo actual: ${user.targetCalories} kcal/día
-
-DÉFICIT/SUPERÁVIT: ${(user.targetCalories - user.tdee).toStringAsFixed(0)} kcal/día
-
-Para tu objetivo "${user.fitnessGoal}", este ajuste calórico es ${user.fitnessGoal.toLowerCase().contains('pérdida') || user.fitnessGoal.toLowerCase().contains('definición') ? 'apropiado' : 'ajustable'}.
-    ''';
-  }
-
-  Map<String, dynamic> _buildNutritionContext(User user) {
-    return {
-      'targetCalories': user.targetCalories,
-      'dietaryPreferences': user.dietaryPreferences,
-      'allergies': user.allergies,
-      'activityLevel': user.activityLevel,
-      'fitnessGoal': user.fitnessGoal,
-    };
-  }
+  // Unused mock methods removed
 
   String _analyzeNutritionData(
     User user,

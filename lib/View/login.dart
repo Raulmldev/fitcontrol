@@ -77,8 +77,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _navigateToAIChat() {
-    // Crear usuario de ejemplo para chat
+  void _navigateToDemo() {
+    // Crear usuario de ejemplo para demo
     final user = User(
       email: 'demo@fitcontrol.com',
       name: 'Usuario Demo',
@@ -91,7 +91,16 @@ class _LoginScreenState extends State<LoginScreen> {
       targetCalories: 2200,
     );
 
-    Navigator.pushNamed(context, '/ai_chat', arguments: {'user': user});
+    Navigator.pushReplacementNamed(
+      context,
+      '/dashboard',
+      arguments: {
+        'user': user,
+        'onLogout': () {
+          Navigator.pushReplacementNamed(context, '/');
+        },
+      },
+    );
   }
 
   @override
@@ -192,11 +201,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                // Botón de acceso rápido a chat IA (demo)
+                // Botón de acceso rápido a Demo
                 TextButton.icon(
-                  onPressed: _navigateToAIChat,
-                  icon: const Icon(Icons.smart_toy),
-                  label: const Text('Probar Asistente IA (Demo)'),
+                  onPressed: _navigateToDemo,
+                  icon: const Icon(Icons.preview),
+                  label: const Text('Probar App (Demo Completa)'),
                 ),
                 const SizedBox(height: 32),
 
