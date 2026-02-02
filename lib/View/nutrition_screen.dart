@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Model/user.dart';
+import 'log_meal_screen.dart';
 
 class NutritionScreen extends StatelessWidget {
   final User user;
@@ -31,9 +32,14 @@ class NutritionScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Implement meal logging
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LogMealScreen(user: user),
+            ),
+          );
         },
         icon: const Icon(Icons.add),
         label: const Text('Registrar Comida'),

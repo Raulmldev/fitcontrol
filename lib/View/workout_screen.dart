@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Model/user.dart';
+import 'log_workout_screen.dart';
 
 class WorkoutScreen extends StatelessWidget {
   final User user;
@@ -47,9 +48,14 @@ class WorkoutScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Log workout
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LogWorkoutScreen(user: user),
+            ),
+          );
         },
         icon: const Icon(Icons.play_arrow),
         label: const Text('Iniciar Rutina'),

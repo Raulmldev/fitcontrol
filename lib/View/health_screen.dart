@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Model/user.dart';
+import 'log_vitals_screen.dart';
 
 class HealthScreen extends StatelessWidget {
   final User user;
@@ -116,9 +117,14 @@ class HealthScreen extends StatelessWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
+floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Log vitals
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LogVitalsScreen(user: user),
+            ),
+          );
         },
         icon: const Icon(Icons.add),
         label: const Text('Registrar Signos'),

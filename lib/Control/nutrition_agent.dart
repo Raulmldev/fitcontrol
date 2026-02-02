@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import '../Model/ai_message.dart';
 import '../Model/meal.dart';
 import '../Model/shopping_list.dart';
