@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
@@ -18,8 +18,8 @@ class FoodRecognitionService {
   List<String> _labels = [];
 
   // Ruta del archivo de etiquetas ImageNet
-  static const String LABELS_PATH = 'assets/models/labels_mobilenet_quant_v1_224.txt';
-  static const String MODEL_PATH = 'assets/models/mobilenet_v1_1.0_224_quant.tflite';
+  static const String labelsPath = 'assets/models/labels_mobilenet_quant_v1_224.txt';
+  static const String modelPath = 'assets/models/mobilenet_v1_1.0_224_quant.tflite';
 
   // Mapeo de clases de COMIDA de ImageNet a valores nutricionales
   // Solo incluye clases que son alimentos
@@ -167,15 +167,15 @@ class FoodRecognitionService {
       await _loadLabels();
       
       // Intentar cargar el modelo TFLite
-      _interpreter = await Interpreter.fromAsset(MODEL_PATH);
+      _interpreter = await Interpreter.fromAsset(modelPath);
       _isInitialized = true;
       _useDemoMode = false;
-      print('FoodRecognitionService: Modelo MobileNetV1 cargado exitosamente');
-      print('FoodRecognitionService: ${_labels.length} etiquetas cargadas');
+      debugPrint('FoodRecognitionService: Modelo MobileNetV1 cargado exitosamente');
+      debugPrint('FoodRecognitionService: ${_labels.length} etiquetas cargadas');
       return true;
     } catch (e) {
-      print('FoodRecognitionService: No se pudo cargar el modelo TFLite: $e');
-      print('FoodRecognitionService: Usando modo demo');
+      debugPrint('FoodRecognitionService: No se pudo cargar el modelo TFLite: $e');
+      debugPrint('FoodRecognitionService: Usando modo demo');
       _isInitialized = true;
       _useDemoMode = true;
       return true;
@@ -185,15 +185,15 @@ class FoodRecognitionService {
   /// Carga las etiquetas de ImageNet desde el archivo
   Future<void> _loadLabels() async {
     try {
-      final labelsData = await rootBundle.loadString(LABELS_PATH);
+      final labelsData = await rootBundle.loadString(labelsPath);
       _labels = labelsData
           .split('\n')
           .map((line) => line.trim())
           .where((line) => line.isNotEmpty)
           .toList();
-      print('FoodRecognitionService: Cargadas ${_labels.length} etiquetas de ImageNet');
+      debugPrint('FoodRecognitionService: Cargadas ${_labels.length} etiquetas de ImageNet');
     } catch (e) {
-      print('FoodRecognitionService: Error cargando etiquetas: $e');
+      debugPrint('FoodRecognitionService: Error cargando etiquetas: $e');
       _labels = [];
     }
   }
@@ -238,7 +238,7 @@ class FoodRecognitionService {
       // Decodificar imagen
       final img.Image? originalImage = img.decodeImage(bytes);
       if (originalImage == null) {
-        print('FoodRecognitionService: No se pudo decodificar la imagen');
+        debugPrint('FoodRecognitionService: No se pudo decodificar la imagen');
         return _analyzeWithDemo(xFile);
       }
 
@@ -327,7 +327,7 @@ class FoodRecognitionService {
       };
 
     } catch (e) {
-      print('FoodRecognitionService: Error en análisis TFLite: $e');
+        debugPrint('FoodRecognitionService: Error en análisis TFLite: $e');
       return _analyzeWithDemo(xFile);
     }
   }

@@ -178,12 +178,14 @@ class _LogMealScreenState extends State<LogMealScreen> {
         final confidence = result['confidence'] as double;
         if (confidence < 0.5) {
           // Mostrar mensaje de que no se detectó con confianza suficiente
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No se pudo identificar el alimento con certeza suficiente. Por favor ingresa los datos manualmente.'),
-              backgroundColor: Colors.orange,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('No se pudo identificar el alimento con certeza suficiente. Por favor ingresa los datos manualmente.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           return;
         }
       }
