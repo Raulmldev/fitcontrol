@@ -9,8 +9,9 @@ import '../Model/user.dart';
 /// Permite al usuario interactuar con el equipo de 15 expertos de IA
 class AIChatScreen extends StatefulWidget {
   final User user;
+  final String? initialAgentId;
 
-  const AIChatScreen({super.key, required this.user});
+  const AIChatScreen({super.key, required this.user, this.initialAgentId});
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -49,7 +50,27 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   void _addWelcomeMessage() {
-    final welcomeMessage = AIAgentMessage(
+    AIAgentMessage welcomeMessage;
+
+    // Si se proporciona initialAgentId, mostrar mensaje personalizado del agente
+    if (widget.initialAgentId != null) {
+      final expert = AIExpertTeam.getExpert(widget.initialAgentId!);
+      if (expert != null) {
+        welcomeMessage = _buildAgentWelcomeMessage(expert);
+      } else {
+        welcomeMessage = _buildGeneralWelcomeMessage();
+      }
+    } else {
+      welcomeMessage = _buildGeneralWelcomeMessage();
+    }
+
+    setState(() {
+      _messages.add(welcomeMessage);
+    });
+  }
+
+  AIAgentMessage _buildGeneralWelcomeMessage() {
+    return AIAgentMessage(
       agentId: 'coordinator',
       agentName: 'Equipo FitControl',
       agentType: 'welcome',
@@ -73,10 +94,53 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
       ''',
       type: MessageType.text,
     );
+  }
 
-    setState(() {
-      _messages.add(welcomeMessage);
-    });
+  AIAgentMessage _buildAgentWelcomeMessage(AIExpertDefinition expert) {
+    String agentType;
+    switch (expert.id) {
+      case 'nutrition_expert_001':
+        agentType = 'nutritionist';
+        break;
+      case 'trainer_expert_001':
+        agentType = 'personal_trainer';
+        break;
+      case 'health_expert_001':
+        agentType = 'health_specialist';
+        break;
+      default:
+        agentType = 'specialist';
+    }
+
+    return AIAgentMessage(
+      agentId: expert.id,
+      agentName: expert.name,
+      agentType: agentType,
+      content: '''
+🎉 ¡Bienvenido a FitControl!
+
+Soy ${expert.name}, ${expert.role.toLowerCase()}, y estaré encantado de ayudarte en tu viaje hacia una vida más saludable.
+
+📋 SOBRE MÍ:
+• ${expert.experience} años de experiencia en ${expert.specialization}
+• Personalidad: ${expert.personality}
+• Idiomas: ${expert.languages.join(', ')}
+
+🎯 MI ESPECIALIZACIÓN:
+${expert.expertise.map((e) => '• $e').join('\n')}
+
+💼 CÓMO PUEDO AYUDARTE:
+${expert.responsibilities.map((r) => '• $r').join('\n')}
+
+🤝 TRABAJO EN EQUIPO:
+${expert.coordinationRole}
+
+💡 Estoy aquí para responder tus preguntas y guiarte. ¡No dudes en consultarme cualquier duda sobre ${expert.specialization.toLowerCase()}!
+
+El resto del equipo de 15 expertos también está disponible para coordinarse conmigo cuando sea necesario.
+      ''',
+      type: MessageType.text,
+    );
   }
 
   Future<void> _sendMessage() async {

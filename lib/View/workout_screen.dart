@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Model/user.dart';
+import 'ai_chat_screen.dart';
 import 'log_workout_screen.dart';
 
 class WorkoutScreen extends StatelessWidget {
@@ -115,7 +116,15 @@ floatingActionButton: FloatingActionButton.extended(
                 ),
                 TextButton(
                   onPressed: () {
-                    // Chat with trainer
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AIChatScreen(
+                          user: user,
+                          initialAgentId: 'trainer_expert_001',
+                        ),
+                      ),
+                    );
                   },
                   child: const Text('Consultar Entrenador'),
                 ),
