@@ -1,11 +1,12 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 
 /// Servicio de reconocimiento de comida usando TensorFlow Lite (LOCAL)
 /// Funciona 100% offline - no requiere conexión a internet
-/// Modelo: Food-101 classifier procesa imágenes de 224x224 píxeles
+/// Modelo: MobileNetV1 con etiquetas ImageNet (1000 clases)
 class FoodRecognitionService {
   static final FoodRecognitionService _instance = FoodRecognitionService._internal();
   factory FoodRecognitionService() => _instance;
@@ -14,150 +15,163 @@ class FoodRecognitionService {
   Interpreter? _interpreter;
   bool _isInitialized = false;
   bool _useDemoMode = false;
+  List<String> _labels = [];
 
-  // Lista de 101 alimentos del dataset Food-101
-  static const List<String> _foodLabels = [
-    'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
-    'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
-    'bruschetta', 'caesar_salad', 'cannoli', 'caprese_salad', 'carrot_cake',
-    'ceviche', 'cheese_plate', 'cheesecake', 'chicken_curry', 'chicken_quesadilla',
-    'chicken_wings', 'chocolate_cake', 'chocolate_mousse', 'churros', 'clam_chowder',
-    'club_sandwich', 'crab_cakes', 'creme_brulee', 'croque_madame', 'cup_cakes',
-    'deviled_eggs', 'donuts', 'dumplings', 'edamame', 'eggs_benedict',
-    'escargots', 'falafel', 'filet_mignon', 'fish_and_chips', 'foie_gras',
-    'french_fries', 'french_onion_soup', 'french_toast', 'fried_calamari', 'fried_rice',
-    'frozen_yogurt', 'garlic_bread', 'gnocchi', 'greek_salad', 'grilled_cheese_sandwich',
-    'grilled_salmon', 'guacamole', 'gyoza', 'hamburger', 'hot_and_sour_soup',
-    'hot_dog', 'huevos_rancheros', 'hummus', 'ice_cream', 'lasagna',
-    'lobster_bisque', 'lobster_roll_sandwich', 'macaroni_and_cheese', 'macarons', 'miso_soup',
-    'mussels', 'nachos', 'omelette', 'onion_rings', 'oysters',
-    'pad_thai', 'paella', 'pancakes', 'panna_cotta', 'peking_duck',
-    'pho', 'pizza', 'pork_chop', 'poutine', 'prime_rib',
-    'pulled_pork_sandwich', 'ramen', 'ravioli', 'red_velvet_cake', 'risotto',
-    'samosa', 'sashimi', 'scallops', 'seaweed_salad', 'shrimp_and_grits',
-    'spaghetti_bolognese', 'spaghetti_carbonara', 'spring_rolls', 'steak', 'strawberry_shortcake',
-    'sushi', 'tacos', 'takoyaki', 'tiramisu', 'tuna_tartare',
-    'waffles', 'caesar_salad', 'pasta', 'salad', 'soup'
-  ];
+  // Ruta del archivo de etiquetas ImageNet
+  static const String LABELS_PATH = 'assets/models/labels_mobilenet_quant_v1_224.txt';
+  static const String MODEL_PATH = 'assets/models/mobilenet_v1_1.0_224_quant.tflite';
 
-  // Base de datos nutricional aproximada (calorías por 100g)
+  // Mapeo de clases de COMIDA de ImageNet a valores nutricionales
+  // Solo incluye clases que son alimentos
   static const Map<String, Map<String, double>> _nutritionDatabase = {
-    'apple_pie': {'calories': 265, 'protein': 2.1, 'carbs': 37, 'fat': 12, 'fiber': 1.8},
-    'baby_back_ribs': {'calories': 290, 'protein': 23, 'carbs': 0, 'fat': 21, 'fiber': 0},
-    'baklava': {'calories': 430, 'protein': 6, 'carbs': 52, 'fat': 23, 'fiber': 2},
-    'beef_carpaccio': {'calories': 180, 'protein': 26, 'carbs': 0, 'fat': 8, 'fiber': 0},
-    'beef_tartare': {'calories': 180, 'protein': 26, 'carbs': 0, 'fat': 8, 'fiber': 0},
-    'beet_salad': {'calories': 85, 'protein': 2, 'carbs': 12, 'fat': 3.5, 'fiber': 3},
-    'beignets': {'calories': 350, 'protein': 5, 'carbs': 45, 'fat': 16, 'fiber': 1},
-    'bibimbap': {'calories': 490, 'protein': 16, 'carbs': 75, 'fat': 14, 'fiber': 5},
-    'bread_pudding': {'calories': 280, 'protein': 7, 'carbs': 42, 'fat': 9, 'fiber': 1},
-    'breakfast_burrito': {'calories': 450, 'protein': 18, 'carbs': 48, 'fat': 22, 'fiber': 4},
-    'bruschetta': {'calories': 220, 'protein': 5, 'carbs': 28, 'fat': 10, 'fiber': 2},
-    'caesar_salad': {'calories': 180, 'protein': 8, 'carbs': 12, 'fat': 12, 'fiber': 3},
-    'cannoli': {'calories': 310, 'protein': 5, 'carbs': 38, 'fat': 15, 'fiber': 1},
-    'caprese_salad': {'calories': 160, 'protein': 7, 'carbs': 5, 'fat': 13, 'fiber': 1},
-    'carrot_cake': {'calories': 410, 'protein': 4, 'carbs': 55, 'fat': 20, 'fiber': 2},
-    'ceviche': {'calories': 120, 'protein': 20, 'carbs': 8, 'fat': 2, 'fiber': 1},
-    'cheese_plate': {'calories': 350, 'protein': 20, 'carbs': 2, 'fat': 28, 'fiber': 0},
-    'cheesecake': {'calories': 320, 'protein': 6, 'carbs': 32, 'fat': 19, 'fiber': 0.5},
-    'chicken_curry': {'calories': 290, 'protein': 22, 'carbs': 15, 'fat': 16, 'fiber': 3},
-    'chicken_quesadilla': {'calories': 380, 'protein': 24, 'carbs': 30, 'fat': 19, 'fiber': 2},
-    'chicken_wings': {'calories': 290, 'protein': 27, 'carbs': 0, 'fat': 19, 'fiber': 0},
-    'chocolate_cake': {'calories': 370, 'protein': 4, 'carbs': 52, 'fat': 16, 'fiber': 2},
-    'chocolate_mousse': {'calories': 280, 'protein': 5, 'carbs': 32, 'fat': 15, 'fiber': 2},
-    'churros': {'calories': 400, 'protein': 4, 'carbs': 58, 'fat': 17, 'fiber': 2},
-    'clam_chowder': {'calories': 200, 'protein': 9, 'carbs': 18, 'fat': 10, 'fiber': 1},
-    'club_sandwich': {'calories': 340, 'protein': 18, 'carbs': 32, 'fat': 16, 'fiber': 2},
-    'crab_cakes': {'calories': 260, 'protein': 16, 'carbs': 15, 'fat': 15, 'fiber': 1},
-    'creme_brulee': {'calories': 340, 'protein': 4, 'carbs': 30, 'fat': 22, 'fiber': 0},
-    'croque_madame': {'calories': 450, 'protein': 22, 'carbs': 28, 'fat': 28, 'fiber': 1},
-    'cup_cakes': {'calories': 350, 'protein': 3, 'carbs': 52, 'fat': 14, 'fiber': 1},
-    'deviled_eggs': {'calories': 160, 'protein': 8, 'carbs': 1, 'fat': 13, 'fiber': 0},
-    'donuts': {'calories': 450, 'protein': 4, 'carbs': 55, 'fat': 23, 'fiber': 1},
-    'dumplings': {'calories': 240, 'protein': 9, 'carbs': 32, 'fat': 8, 'fiber': 1},
-    'edamame': {'calories': 120, 'protein': 11, 'carbs': 10, 'fat': 5, 'fiber': 5},
-    'eggs_benedict': {'calories': 380, 'protein': 18, 'carbs': 16, 'fat': 27, 'fiber': 1},
-    'escargots': {'calories': 90, 'protein': 16, 'carbs': 2, 'fat': 2, 'fiber': 0},
-    'falafel': {'calories': 330, 'protein': 13, 'carbs': 32, 'fat': 18, 'fiber': 8},
-    'filet_mignon': {'calories': 270, 'protein': 26, 'carbs': 0, 'fat': 18, 'fiber': 0},
-    'fish_and_chips': {'calories': 420, 'protein': 16, 'carbs': 45, 'fat': 20, 'fiber': 3},
-    'foie_gras': {'calories': 460, 'protein': 11, 'carbs': 4, 'fat': 43, 'fiber': 0},
-    'french_fries': {'calories': 365, 'protein': 3.4, 'carbs': 48, 'fat': 17, 'fiber': 4},
-    'french_onion_soup': {'calories': 170, 'protein': 9, 'carbs': 18, 'fat': 7, 'fiber': 2},
-    'french_toast': {'calories': 320, 'protein': 10, 'carbs': 45, 'fat': 11, 'fiber': 2},
-    'fried_calamari': {'calories': 280, 'protein': 18, 'carbs': 22, 'fat': 14, 'fiber': 1},
-    'fried_rice': {'calories': 210, 'protein': 5, 'carbs': 32, 'fat': 7, 'fiber': 1},
-    'frozen_yogurt': {'calories': 160, 'protein': 4, 'carbs': 30, 'fat': 2, 'fiber': 0},
-    'garlic_bread': {'calories': 350, 'protein': 6, 'carbs': 48, 'fat': 15, 'fiber': 2},
-    'gnocchi': {'calories': 220, 'protein': 5, 'carbs': 40, 'fat': 5, 'fiber': 2},
-    'greek_salad': {'calories': 150, 'protein': 5, 'carbs': 8, 'fat': 12, 'fiber': 3},
-    'grilled_cheese_sandwich': {'calories': 380, 'protein': 14, 'carbs': 35, 'fat': 21, 'fiber': 2},
-    'grilled_salmon': {'calories': 210, 'protein': 22, 'carbs': 0, 'fat': 13, 'fiber': 0},
-    'guacamole': {'calories': 170, 'protein': 2, 'carbs': 8, 'fat': 15, 'fiber': 6},
-    'gyoza': {'calories': 200, 'protein': 8, 'carbs': 28, 'fat': 6, 'fiber': 1},
-    'hamburger': {'calories': 295, 'protein': 17, 'carbs': 30, 'fat': 12, 'fiber': 1},
-    'hot_and_sour_soup': {'calories': 120, 'protein': 6, 'carbs': 15, 'fat': 4, 'fiber': 1},
-    'hot_dog': {'calories': 290, 'protein': 10, 'carbs': 25, 'fat': 17, 'fiber': 1},
-    'huevos_rancheros': {'calories': 320, 'protein': 14, 'carbs': 35, 'fat': 14, 'fiber': 5},
-    'hummus': {'calories': 170, 'protein': 8, 'carbs': 14, 'fat': 9, 'fiber': 6},
-    'ice_cream': {'calories': 207, 'protein': 3.5, 'carbs': 24, 'fat': 11, 'fiber': 0.7},
-    'lasagna': {'calories': 280, 'protein': 16, 'carbs': 26, 'fat': 12, 'fiber': 2},
-    'lobster_bisque': {'calories': 190, 'protein': 9, 'carbs': 14, 'fat': 11, 'fiber': 0},
-    'lobster_roll_sandwich': {'calories': 380, 'protein': 18, 'carbs': 32, 'fat': 20, 'fiber': 1},
-    'macaroni_and_cheese': {'calories': 370, 'protein': 14, 'carbs': 45, 'fat': 15, 'fiber': 2},
-    'macarons': {'calories': 450, 'protein': 7, 'carbs': 72, 'fat': 15, 'fiber': 3},
-    'miso_soup': {'calories': 40, 'protein': 3, 'carbs': 5, 'fat': 1, 'fiber': 1},
-    'mussels': {'calories': 170, 'protein': 24, 'carbs': 7, 'fat': 4, 'fiber': 0},
-    'nachos': {'calories': 350, 'protein': 8, 'carbs': 38, 'fat': 19, 'fiber': 4},
-    'omelette': {'calories': 150, 'protein': 12, 'carbs': 1, 'fat': 11, 'fiber': 0},
-    'onion_rings': {'calories': 350, 'protein': 4, 'carbs': 45, 'fat': 18, 'fiber': 3},
-    'oysters': {'calories': 80, 'protein': 9, 'carbs': 4, 'fat': 3, 'fiber': 0},
-    'pad_thai': {'calories': 360, 'protein': 12, 'carbs': 50, 'fat': 12, 'fiber': 2},
-    'paella': {'calories': 280, 'protein': 18, 'carbs': 35, 'fat': 8, 'fiber': 2},
-    'pancakes': {'calories': 250, 'protein': 6, 'carbs': 38, 'fat': 8, 'fiber': 1},
-    'panna_cotta': {'calories': 270, 'protein': 3, 'carbs': 24, 'fat': 18, 'fiber': 0},
-    'peking_duck': {'calories': 350, 'protein': 20, 'carbs': 15, 'fat': 24, 'fiber': 0},
-    'pho': {'calories': 430, 'protein': 24, 'carbs': 50, 'fat': 12, 'fiber': 2},
+    // Comidas rápidas y snacks
     'pizza': {'calories': 285, 'protein': 12, 'carbs': 36, 'fat': 10, 'fiber': 2},
-    'pork_chop': {'calories': 250, 'protein': 25, 'carbs': 0, 'fat': 16, 'fiber': 0},
-    'poutine': {'calories': 510, 'protein': 16, 'carbs': 55, 'fat': 26, 'fiber': 3},
-    'prime_rib': {'calories': 320, 'protein': 26, 'carbs': 0, 'fat': 24, 'fiber': 0},
-    'pulled_pork_sandwich': {'calories': 420, 'protein': 28, 'carbs': 38, 'fat': 19, 'fiber': 2},
-    'ramen': {'calories': 440, 'protein': 16, 'carbs': 65, 'fat': 14, 'fiber': 2},
-    'ravioli': {'calories': 240, 'protein': 9, 'carbs': 32, 'fat': 8, 'fiber': 2},
-    'red_velvet_cake': {'calories': 380, 'protein': 4, 'carbs': 56, 'fat': 16, 'fiber': 1},
-    'risotto': {'calories': 280, 'protein': 7, 'carbs': 45, 'fat': 8, 'fiber': 1},
-    'samosa': {'calories': 270, 'protein': 5, 'carbs': 32, 'fat': 14, 'fiber': 3},
-    'sashimi': {'calories': 120, 'protein': 22, 'carbs': 0, 'fat': 3, 'fiber': 0},
-    'scallops': {'calories': 110, 'protein': 20, 'carbs': 5, 'fat': 1, 'fiber': 0},
-    'seaweed_salad': {'calories': 45, 'protein': 2, 'carbs': 8, 'fat': 0.5, 'fiber': 2},
-    'shrimp_and_grits': {'calories': 290, 'protein': 18, 'carbs': 28, 'fat': 12, 'fiber': 1},
-    'spaghetti_bolognese': {'calories': 340, 'protein': 18, 'carbs': 42, 'fat': 12, 'fiber': 3},
-    'spaghetti_carbonara': {'calories': 420, 'protein': 16, 'carbs': 48, 'fat': 18, 'fiber': 2},
-    'spring_rolls': {'calories': 120, 'protein': 4, 'carbs': 20, 'fat': 3, 'fiber': 2},
-    'steak': {'calories': 250, 'protein': 26, 'carbs': 0, 'fat': 17, 'fiber': 0},
-    'strawberry_shortcake': {'calories': 330, 'protein': 4, 'carbs': 50, 'fat': 12, 'fiber': 2},
+    'hamburger': {'calories': 295, 'protein': 17, 'carbs': 30, 'fat': 12, 'fiber': 1},
+    'hotdog': {'calories': 290, 'protein': 10, 'carbs': 25, 'fat': 17, 'fiber': 1},
+    'cheeseburger': {'calories': 303, 'protein': 15, 'carbs': 30, 'fat': 14, 'fiber': 1},
+    
+    // Comida asiática
     'sushi': {'calories': 150, 'protein': 5, 'carbs': 28, 'fat': 1, 'fiber': 1},
-    'tacos': {'calories': 210, 'protein': 10, 'carbs': 22, 'fat': 9, 'fiber': 3},
-    'takoyaki': {'calories': 220, 'protein': 8, 'carbs': 28, 'fat': 8, 'fiber': 1},
-    'tiramisu': {'calories': 450, 'protein': 6, 'carbs': 45, 'fat': 28, 'fiber': 1},
-    'tuna_tartare': {'calories': 140, 'protein': 22, 'carbs': 2, 'fat': 5, 'fiber': 0},
-    'waffles': {'calories': 290, 'protein': 7, 'carbs': 45, 'fat': 9, 'fiber': 1},
-    'pasta': {'calories': 220, 'protein': 8, 'carbs': 43, 'fat': 1, 'fiber': 2},
-    'salad': {'calories': 80, 'protein': 3, 'carbs': 12, 'fat': 3, 'fiber': 4},
+    'potstickers': {'calories': 200, 'protein': 8, 'carbs': 28, 'fat': 6, 'fiber': 1},
+    'ramen': {'calories': 440, 'protein': 16, 'carbs': 65, 'fat': 14, 'fiber': 2},
+    
+    // Postres
+    'ice_cream': {'calories': 207, 'protein': 3.5, 'carbs': 24, 'fat': 11, 'fiber': 0.7},
+    'chocolate_cake': {'calories': 370, 'protein': 4, 'carbs': 52, 'fat': 16, 'fiber': 2},
+    'cheesecake': {'calories': 320, 'protein': 6, 'carbs': 32, 'fat': 19, 'fiber': 0.5},
+    'carrot_cake': {'calories': 410, 'protein': 4, 'carbs': 55, 'fat': 20, 'fiber': 2},
+    'cupcake': {'calories': 350, 'protein': 3, 'carbs': 52, 'fat': 14, 'fiber': 1},
+    'doughnut': {'calories': 450, 'protein': 4, 'carbs': 55, 'fat': 23, 'fiber': 1},
+    'croissant': {'calories': 406, 'protein': 8, 'carbs': 46, 'fat': 21, 'fiber': 2},
+    'waffle': {'calories': 290, 'protein': 7, 'carbs': 45, 'fat': 9, 'fiber': 1},
+    'pancake': {'calories': 250, 'protein': 6, 'carbs': 38, 'fat': 8, 'fiber': 1},
+    'french_toast': {'calories': 320, 'protein': 10, 'carbs': 45, 'fat': 11, 'fiber': 2},
+    
+    // Bebidas y recipientes
+    'coffee_mug': {'calories': 5, 'protein': 0.3, 'carbs': 0.9, 'fat': 0, 'fiber': 0},
+    'cup': {'calories': 0, 'protein': 0, 'carbs': 0, 'fat': 0, 'fiber': 0},
+    'wine_bottle': {'calories': 83, 'protein': 0.1, 'carbs': 2.6, 'fat': 0, 'fiber': 0},
+    'beer_bottle': {'calories': 43, 'protein': 0.5, 'carbs': 3.6, 'fat': 0, 'fiber': 0},
+    'beer_glass': {'calories': 43, 'protein': 0.5, 'carbs': 3.6, 'fat': 0, 'fiber': 0},
+    'red_wine': {'calories': 85, 'protein': 0.1, 'carbs': 2.6, 'fat': 0, 'fiber': 0},
+    'eggnog': {'calories': 130, 'protein': 4, 'carbs': 12, 'fat': 6, 'fiber': 0},
+    
+    // Frutas
+    'orange': {'calories': 62, 'protein': 1.2, 'carbs': 15, 'fat': 0.2, 'fiber': 3.1},
+    'lemon': {'calories': 29, 'protein': 1.1, 'carbs': 9, 'fat': 0.3, 'fiber': 2.8},
+    'banana': {'calories': 89, 'protein': 1.1, 'carbs': 23, 'fat': 0.3, 'fiber': 2.6},
+    'pineapple': {'calories': 50, 'protein': 0.5, 'carbs': 13, 'fat': 0.1, 'fiber': 1.4},
+    'apple': {'calories': 52, 'protein': 0.3, 'carbs': 14, 'fat': 0.2, 'fiber': 2.4},
+    'strawberry': {'calories': 32, 'protein': 0.7, 'carbs': 7.7, 'fat': 0.3, 'fiber': 2},
+    'grapes': {'calories': 69, 'protein': 0.7, 'carbs': 18, 'fat': 0.2, 'fiber': 0.9},
+    'watermelon': {'calories': 30, 'protein': 0.6, 'carbs': 8, 'fat': 0.2, 'fiber': 0.4},
+    'peach': {'calories': 39, 'protein': 0.9, 'carbs': 10, 'fat': 0.3, 'fiber': 1.5},
+    'pear': {'calories': 57, 'protein': 0.4, 'carbs': 15, 'fat': 0.1, 'fiber': 3.1},
+    'mango': {'calories': 60, 'protein': 0.8, 'carbs': 15, 'fat': 0.4, 'fiber': 1.6},
+    'pomegranate': {'calories': 83, 'protein': 1.7, 'carbs': 19, 'fat': 1.2, 'fiber': 4},
+    
+    // Verduras
+    'broccoli': {'calories': 34, 'protein': 2.8, 'carbs': 7, 'fat': 0.4, 'fiber': 2.6},
+    'cauliflower': {'calories': 25, 'protein': 1.9, 'carbs': 5, 'fat': 0.3, 'fiber': 2},
+    'carrot': {'calories': 41, 'protein': 0.9, 'carbs': 10, 'fat': 0.2, 'fiber': 2.8},
+    'cucumber': {'calories': 15, 'protein': 0.7, 'carbs': 3.6, 'fat': 0.1, 'fiber': 0.5},
+    'bell_pepper': {'calories': 31, 'protein': 1, 'carbs': 6, 'fat': 0.3, 'fiber': 2.1},
+    'mushroom': {'calories': 22, 'protein': 3.1, 'carbs': 3.3, 'fat': 0.3, 'fiber': 1},
+    'corn': {'calories': 86, 'protein': 3.2, 'carbs': 19, 'fat': 1.2, 'fiber': 2.7},
+    'potato': {'calories': 77, 'protein': 2, 'carbs': 17, 'fat': 0.1, 'fiber': 2.2},
+    'sweet_potato': {'calories': 86, 'protein': 1.6, 'carbs': 20, 'fat': 0.1, 'fiber': 3},
+    'onion': {'calories': 40, 'protein': 1.1, 'carbs': 9, 'fat': 0.1, 'fiber': 1.7},
+    'garlic': {'calories': 149, 'protein': 6.4, 'carbs': 33, 'fat': 0.5, 'fiber': 2.1},
+    'tomato': {'calories': 18, 'protein': 0.9, 'carbs': 3.9, 'fat': 0.2, 'fiber': 1.2},
+    'cabbage': {'calories': 25, 'protein': 1.3, 'carbs': 6, 'fat': 0.1, 'fiber': 2.5},
+    'lettuce': {'calories': 15, 'protein': 1.4, 'carbs': 2.9, 'fat': 0.2, 'fiber': 1.3},
+    'spinach': {'calories': 23, 'protein': 2.9, 'carbs': 3.6, 'fat': 0.4, 'fiber': 2.2},
+    'celery': {'calories': 14, 'protein': 0.7, 'carbs': 3, 'fat': 0.2, 'fiber': 1.6},
+    'asparagus': {'calories': 20, 'protein': 2.2, 'carbs': 3.9, 'fat': 0.1, 'fiber': 2.1},
+    'zucchini': {'calories': 17, 'protein': 1.2, 'carbs': 3.1, 'fat': 0.3, 'fiber': 1},
+    'pumpkin': {'calories': 26, 'protein': 1, 'carbs': 6.5, 'fat': 0.1, 'fiber': 0.5},
+    
+    // Carnes y proteínas
+    'steak': {'calories': 250, 'protein': 26, 'carbs': 0, 'fat': 17, 'fiber': 0},
+    'meatloaf': {'calories': 240, 'protein': 18, 'carbs': 12, 'fat': 14, 'fiber': 1},
+    'roast': {'calories': 280, 'protein': 26, 'carbs': 0, 'fat': 19, 'fiber': 0},
+    'barbecue': {'calories': 290, 'protein': 23, 'carbs': 8, 'fat': 19, 'fiber': 0},
+    'ham': {'calories': 145, 'protein': 21, 'carbs': 1.5, 'fat': 6, 'fiber': 0},
+    'bacon': {'calories': 541, 'protein': 37, 'carbs': 1.4, 'fat': 42, 'fiber': 0},
+    'sausage': {'calories': 301, 'protein': 12, 'carbs': 2, 'fat': 27, 'fiber': 0},
+    'chicken': {'calories': 165, 'protein': 31, 'carbs': 0, 'fat': 3.6, 'fiber': 0},
+    'chicken_wing': {'calories': 290, 'protein': 27, 'carbs': 0, 'fat': 19, 'fiber': 0},
+    'turkey': {'calories': 189, 'protein': 29, 'carbs': 0, 'fat': 7, 'fiber': 0},
+    'salmon': {'calories': 208, 'protein': 20, 'carbs': 0, 'fat': 13, 'fiber': 0},
+    'tuna': {'calories': 132, 'protein': 28, 'carbs': 0, 'fat': 1, 'fiber': 0},
+    'lobster': {'calories': 89, 'protein': 19, 'carbs': 0, 'fat': 0.9, 'fiber': 0},
+    'crab': {'calories': 97, 'protein': 20, 'carbs': 0, 'fat': 1.5, 'fiber': 0},
+    'shrimp': {'calories': 99, 'protein': 24, 'carbs': 0.2, 'fat': 0.3, 'fiber': 0},
+    'oyster': {'calories': 81, 'protein': 9, 'carbs': 4.2, 'fat': 3, 'fiber': 0},
+    'egg': {'calories': 155, 'protein': 13, 'carbs': 1.1, 'fat': 11, 'fiber': 0},
+    
+    // Pan y productos de panadería
+    'bread': {'calories': 265, 'protein': 9, 'carbs': 49, 'fat': 3.2, 'fiber': 2.7},
+    'bagel': {'calories': 250, 'protein': 10, 'carbs': 49, 'fat': 1.5, 'fiber': 2},
+    'pretzel': {'calories': 380, 'protein': 10, 'carbs': 79, 'fat': 3, 'fiber': 3},
+    'baguette': {'calories': 270, 'protein': 9, 'carbs': 52, 'fat': 1, 'fiber': 2},
+    'muffin': {'calories': 375, 'protein': 6, 'carbs': 53, 'fat': 16, 'fiber': 2},
+    
+    // Lácteos
+    'cheese': {'calories': 402, 'protein': 25, 'carbs': 1.3, 'fat': 33, 'fiber': 0},
+    'milk': {'calories': 61, 'protein': 3.2, 'carbs': 4.8, 'fat': 3.3, 'fiber': 0},
+    'yogurt': {'calories': 59, 'protein': 10, 'carbs': 3.6, 'fat': 0.4, 'fiber': 0},
+    'icecream': {'calories': 207, 'protein': 3.5, 'carbs': 24, 'fat': 11, 'fiber': 0.7},
+    'butter': {'calories': 717, 'protein': 0.9, 'carbs': 0.1, 'fat': 81, 'fiber': 0},
+    'cream': {'calories': 340, 'protein': 2.1, 'carbs': 2.8, 'fat': 36, 'fiber': 0},
+    
+    // Pasta y granos
+    'spaghetti': {'calories': 158, 'protein': 5.8, 'carbs': 31, 'fat': 0.9, 'fiber': 1.8},
+    'macaroni': {'calories': 371, 'protein': 14, 'carbs': 45, 'fat': 15, 'fiber': 2},
+    'noodle': {'calories': 138, 'protein': 4.5, 'carbs': 25, 'fat': 2.1, 'fiber': 1.2},
+    'rice': {'calories': 130, 'protein': 2.7, 'carbs': 28, 'fat': 0.3, 'fiber': 0.4},
+    'risotto': {'calories': 280, 'protein': 7, 'carbs': 45, 'fat': 8, 'fiber': 1},
+    'burrito': {'calories': 290, 'protein': 12, 'carbs': 34, 'fat': 12, 'fiber': 5},
+    'taco': {'calories': 210, 'protein': 10, 'carbs': 22, 'fat': 9, 'fiber': 3},
+    'enchilada': {'calories': 220, 'protein': 9, 'carbs': 28, 'fat': 9, 'fiber': 4},
+    'fajita': {'calories': 200, 'protein': 12, 'carbs': 22, 'fat': 8, 'fiber': 3},
+    'quesadilla': {'calories': 380, 'protein': 24, 'carbs': 30, 'fat': 19, 'fiber': 2},
+    
+    // Sopas y ensaladas
     'soup': {'calories': 120, 'protein': 6, 'carbs': 15, 'fat': 4, 'fiber': 2},
+    'stew': {'calories': 180, 'protein': 14, 'carbs': 18, 'fat': 6, 'fiber': 3},
+    'salad': {'calories': 80, 'protein': 3, 'carbs': 12, 'fat': 3, 'fiber': 4},
+    'coleslaw': {'calories': 152, 'protein': 1, 'carbs': 15, 'fat': 10, 'fiber': 2},
+    
+    // Snacks
+    'french_fries': {'calories': 365, 'protein': 3.4, 'carbs': 48, 'fat': 17, 'fiber': 4},
+    'potato_chips': {'calories': 536, 'protein': 7, 'carbs': 53, 'fat': 35, 'fiber': 4.8},
+    'popcorn': {'calories': 387, 'protein': 13, 'carbs': 78, 'fat': 4.5, 'fiber': 15},
+    'nachos': {'calories': 350, 'protein': 8, 'carbs': 38, 'fat': 19, 'fiber': 4},
+    'guacamole': {'calories': 170, 'protein': 2, 'carbs': 8, 'fat': 15, 'fiber': 6},
+    'salsa': {'calories': 36, 'protein': 1.5, 'carbs': 7, 'fat': 0.2, 'fiber': 1.4},
+    
+    // Dulces
+    'chocolate': {'calories': 546, 'protein': 4.9, 'carbs': 61, 'fat': 31, 'fiber': 7},
+    'candy': {'calories': 400, 'protein': 0, 'carbs': 100, 'fat': 0, 'fiber': 0},
+    'cookie': {'calories': 502, 'protein': 7, 'carbs': 64, 'fat': 25, 'fiber': 2},
+    'baklava': {'calories': 430, 'protein': 6, 'carbs': 52, 'fat': 23, 'fiber': 2},
   };
 
-  /// Inicializa el servicio cargando el modelo TFLite
+  /// Inicializa el servicio cargando el modelo TFLite y las etiquetas
   Future<bool> initialize() async {
     if (_isInitialized) return true;
 
     try {
+      // Cargar etiquetas de ImageNet
+      await _loadLabels();
+      
       // Intentar cargar el modelo TFLite
-      _interpreter = await Interpreter.fromAsset('assets/models/food_classifier.tflite');
+      _interpreter = await Interpreter.fromAsset(MODEL_PATH);
       _isInitialized = true;
       _useDemoMode = false;
-      print('FoodRecognitionService: Modelo TFLite cargado exitosamente');
+      print('FoodRecognitionService: Modelo MobileNetV1 cargado exitosamente');
+      print('FoodRecognitionService: ${_labels.length} etiquetas cargadas');
       return true;
     } catch (e) {
       print('FoodRecognitionService: No se pudo cargar el modelo TFLite: $e');
@@ -166,6 +180,41 @@ class FoodRecognitionService {
       _useDemoMode = true;
       return true;
     }
+  }
+
+  /// Carga las etiquetas de ImageNet desde el archivo
+  Future<void> _loadLabels() async {
+    try {
+      final labelsData = await rootBundle.loadString(LABELS_PATH);
+      _labels = labelsData
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty)
+          .toList();
+      print('FoodRecognitionService: Cargadas ${_labels.length} etiquetas de ImageNet');
+    } catch (e) {
+      print('FoodRecognitionService: Error cargando etiquetas: $e');
+      _labels = [];
+    }
+  }
+
+  /// Obtiene información nutricional para una clase de ImageNet
+  Map<String, double>? _getNutritionInfo(String label) {
+    final normalizedLabel = label.toLowerCase().replaceAll(' ', '_');
+    
+    // Buscar coincidencia exacta
+    if (_nutritionDatabase.containsKey(normalizedLabel)) {
+      return _nutritionDatabase[normalizedLabel];
+    }
+    
+    // Buscar coincidencias parciales
+    for (final entry in _nutritionDatabase.entries) {
+      if (normalizedLabel.contains(entry.key) || entry.key.contains(normalizedLabel)) {
+        return entry.value;
+      }
+    }
+    
+    return null;
   }
 
   /// Analiza una imagen y detecta el alimento usando TFLite local
@@ -193,7 +242,7 @@ class FoodRecognitionService {
         return _analyzeWithDemo(xFile);
       }
 
-      // Redimensionar a 224x224 (tamaño esperado por el modelo)
+      // Redimensionar a 224x224 (tamaño esperado por MobileNetV1)
       final img.Image resizedImage = img.copyResize(
         originalImage,
         width: 224,
@@ -201,7 +250,7 @@ class FoodRecognitionService {
       );
 
       // Normalizar valores a [0, 1] y preparar input
-      // El modelo espera: [1, 224, 224, 3] (batch, height, width, channels)
+      // MobileNetV1 espera: [1, 224, 224, 3] (batch, height, width, channels)
       final inputBuffer = Float32List(1 * 224 * 224 * 3);
       int bufferIndex = 0;
 
@@ -219,8 +268,8 @@ class FoodRecognitionService {
       // Reshape a [1, 224, 224, 3]
       final input = inputBuffer.reshape([1, 224, 224, 3]);
 
-      // Output: [1, 101] (probabilidades para cada clase de Food-101)
-      final outputBuffer = List.generate(1, (_) => List.filled(101, 0.0));
+      // Output: [1, 1000] (probabilidades para cada clase de ImageNet)
+      final outputBuffer = List.generate(1, (_) => List.filled(1000, 0.0));
 
       // Ejecutar inferencia
       _interpreter!.run(input, outputBuffer);
@@ -238,28 +287,43 @@ class FoodRecognitionService {
         }
       }
 
-      // Obtener nombre del alimento
-      final foodLabel = _foodLabels[maxIndex];
-      final foodName = _formatFoodName(foodLabel);
+      // Obtener nombre del objeto detectado
+      String detectedLabel = '';
+      if (maxIndex < _labels.length) {
+        detectedLabel = _labels[maxIndex];
+      } else {
+        detectedLabel = 'unknown';
+      }
 
-      // Obtener información nutricional
-      final nutrition = _nutritionDatabase[foodLabel] ?? {
-        'calories': 250,
-        'protein': 10,
-        'carbs': 30,
-        'fat': 10,
-        'fiber': 2,
-      };
+      // Limpiar el nombre (quitar número de clase si existe)
+      final cleanLabel = detectedLabel.replaceAll(RegExp(r'^\d+:\s*'), '');
+      final displayName = _formatFoodName(cleanLabel);
 
+      // Verificar si es comida
+      final nutrition = _getNutritionInfo(cleanLabel);
+      
+      if (nutrition == null) {
+        // No es comida, retornar información indicando esto
+        return {
+          'name': displayName,
+          'isFood': false,
+          'confidence': maxProbability,
+          'label': cleanLabel,
+          'message': 'Se detectó $displayName. Por favor fotografía tu comida.',
+        };
+      }
+
+      // Es comida, retornar con información nutricional
       return {
-        'name': foodName,
+        'name': displayName,
+        'isFood': true,
         'confidence': maxProbability,
         'calories': nutrition['calories']!.toDouble(),
         'protein': nutrition['protein']!.toDouble(),
         'carbs': nutrition['carbs']!.toDouble(),
         'fat': nutrition['fat']!.toDouble(),
         'fiber': nutrition['fiber']!.toDouble(),
-        'label': foodLabel, // Etiqueta original para referencia
+        'label': cleanLabel,
       };
 
     } catch (e) {
@@ -296,6 +360,7 @@ class FoodRecognitionService {
     
     return {
       'name': '${food['name']} (Modo Demo)',
+      'isFood': true,
       'confidence': 0.85,
       'calories': food['calories'],
       'protein': food['protein'],
@@ -312,5 +377,6 @@ class FoodRecognitionService {
     _interpreter = null;
     _isInitialized = false;
     _useDemoMode = false;
+    _labels = [];
   }
 }

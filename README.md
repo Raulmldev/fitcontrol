@@ -86,25 +86,45 @@ lib/
 └── main.dart                   # Punto de entrada
 ```
 
-## 🚀 Instalación
+## 🚀 Instalación Rápida
 
-1. **Clonar el repositorio**
+### 1. Clonar el repositorio
 ```bash
 git clone https://github.com/tuusuario/fitcontrol.git
 cd fitcontrol
 ```
 
-2. **Instalar dependencias**
+### 2. Configurar Modelo TFLite (Reconocimiento de Comida)
+
+Hemos incluido scripts automáticos para configurar el modelo de IA:
+
+**Windows:**
+```bash
+cd scripts
+setup_model.bat
+```
+
+**Linux/Mac:**
+```bash
+cd scripts
+chmod +x setup_model.sh
+./setup_model.sh
+```
+
+El script descargará o creará automáticamente un modelo funcional. 
+📖 Ver: `docs/DESCARGAR_MODELO_TFLITE.md` para más opciones.
+
+### 3. Instalar dependencias Flutter
 ```bash
 flutter pub get
 ```
 
-3. **Generar archivos Hive (opcional para persistencia)**
+### 4. Generar archivos Hive (opcional para persistencia)
 ```bash
-flutter pub run build_runner build
+dart run build_runner build
 ```
 
-4. **Ejecutar la aplicación**
+### 5. Ejecutar la aplicación
 ```bash
 flutter run
 ```
