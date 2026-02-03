@@ -114,19 +114,27 @@ floatingActionButton: FloatingActionButton.extended(
                   'Rutina de Hoy: Full Body',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AIChatScreen(
-                          user: user,
-                          initialAgentId: 'trainer_expert_001',
-                        ),
+                Builder(
+                  builder: (BuildContext buttonContext) {
+                    return TextButton.icon(
+                      onPressed: () {
+                        debugPrint('Botón Consultar Entrenador presionado');
+                        Navigator.of(buttonContext).push(
+                          MaterialPageRoute(
+                            builder: (_) => AIChatScreen(
+                              user: user,
+                              initialAgentId: 'trainer_expert_001',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.chat, size: 18),
+                      label: const Text('Consultar Entrenador'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.blue,
                       ),
                     );
                   },
-                  child: const Text('Consultar Entrenador'),
                 ),
               ],
             ),
