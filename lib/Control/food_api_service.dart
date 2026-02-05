@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../Config/app_logger.dart';
 import 'food_scraping_service.dart';
 
 /// Servicio de API que sincroniza datos de scraping con almacenamiento
@@ -26,7 +26,7 @@ class FoodAPIService {
       if (!forceRefresh && _localCache.containsKey(foodName.toLowerCase())) {
         final cachedData = _localCache[foodName.toLowerCase()];
         if (cachedData is FoodNutritionData) {
-          debugPrint('FoodAPI: Found in local cache: $foodName');
+          AppLogger.food('Found in local cache: $foodName');
           return cachedData;
         }
       }
@@ -39,7 +39,7 @@ class FoodAPIService {
           return remoteData;
         }
       } catch (e) {
-        debugPrint('FoodAPI: Remote search failed: $e');
+        AppLogger.error('Remote search failed', error: e, tag: 'API');
       }
 
       // 3. Usar web scraping
@@ -50,7 +50,7 @@ class FoodAPIService {
         
         // Sincronizar con API remota async
         _syncToRemoteAPI(scrapedData).catchError((e) {
-          debugPrint('FoodAPI: Sync failed: $e');
+          AppLogger.error('Sync failed', error: e, tag: 'API');
           return false;
         });
         
@@ -59,7 +59,7 @@ class FoodAPIService {
 
       return null;
     } catch (e) {
-      debugPrint('FoodAPI: Error searching $foodName: $e');
+      AppLogger.error('Error searching', error: e, tag: 'API');
       return null;
     }
   }
@@ -73,11 +73,11 @@ class FoodAPIService {
       // Mock response - en producción sería request real
       final mockResponse = _getMockRemoteResponse(foodName);
       if (mockResponse != null) {
-        debugPrint('FoodAPI: Remote API found: $foodName');
+        AppLogger.food('Remote API found: $foodName');
         return mockResponse;
       }
     } catch (e) {
-      debugPrint('FoodAPI: Remote API error: $e');
+      AppLogger.error('Remote API error', error: e, tag: 'API');
     }
     return null;
   }
@@ -88,10 +88,10 @@ class FoodAPIService {
       // En producción haría POST real a API
       await Future.delayed(const Duration(milliseconds: 300));
       
-      debugPrint('FoodAPI: Synced ${foodData.name} to remote API');
+      AppLogger.api('Synced ${foodData.name} to remote API');
       return true;
     } catch (e) {
-      debugPrint('FoodAPI: Sync error: $e');
+      AppLogger.error('Sync error', error: e, tag: 'API');
       return false;
     }
   }
@@ -99,7 +99,7 @@ class FoodAPIService {
   /// Obtendr batch de alimentos para sincronización masiva
   Future<List<FoodNutritionData>> syncFoodDatabase({int limit = 100}) async {
     try {
-      debugPrint('FoodAPI: Starting database sync (limit: $limit)');
+      AppLogger.api('Starting database sync (limit: $limit)');
       
       // Lista de alimentos comunes para sincronizar
       final commonFoods = [
@@ -126,17 +126,17 @@ class FoodAPIService {
           await _syncToRemoteAPI(foodData);
           syncedCount++;
           
-          debugPrint('FoodAPI: Synced ($syncedCount/$limit): ${foodData.name}');
+          AppLogger.api('Synced ($syncedCount/$limit): ${foodData.name}');
         }
         
         // Pequeña pausa para no sobrecargar
         await Future.delayed(const Duration(milliseconds: 100));
       }
 
-      debugPrint('FoodAPI: Sync completed. Total synced: $syncedCount');
+      AppLogger.api('Sync completed. Total synced: $syncedCount');
       return results;
     } catch (e) {
-      debugPrint('FoodAPI: Sync error: $e');
+      AppLogger.error('Sync error', error: e, tag: 'API');
       return [];
     }
   }
@@ -190,7 +190,7 @@ class FoodAPIService {
 
       return results;
     } catch (e) {
-      debugPrint('FoodAPI: Batch analysis error: $e');
+      AppLogger.error('Batch analysis error', error: e, tag: 'API');
       return {
         'error': e.toString(),
         'timestamp': DateTime.now().toIso8601String(),
@@ -212,7 +212,7 @@ class FoodAPIService {
         'version': '1.0.0',
       };
     } catch (e) {
-      debugPrint('FoodAPI: Stats error: $e');
+      AppLogger.error('Stats error', error: e, tag: 'API');
       return {
         'error': e.toString(),
         'timestamp': DateTime.now().toIso8601String(),
@@ -225,7 +225,7 @@ class FoodAPIService {
   void clearAllCaches() {
     _localCache.clear();
     _scrapingService.clearCache();
-    debugPrint('FoodAPI: All caches cleared');
+    AppLogger.api('All caches cleared');
   }
 
   /// Exporta datos para backup
@@ -248,12 +248,12 @@ class FoodAPIService {
             _localCache[entry.key] = foodData;
           }
         }
-        debugPrint('FoodAPI: Imported ${cacheData.length} items');
+        AppLogger.api('Imported ${cacheData.length} items');
         return true;
       }
       return false;
     } catch (e) {
-      debugPrint('FoodAPI: Import error: $e');
+      AppLogger.error('Import error', error: e, tag: 'API');
       return false;
     }
   }
