@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../Control/ai_expert_team.dart';
 import '../Model/user.dart';
+import '../Widgets/how_ai_works_modal.dart';
+import 'recommendations_screen.dart';
 
 /// Vista del Dashboard Principal de FitControl
 ///
@@ -40,9 +42,17 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Saludo personalizado
-                _buildWelcomeSection(context),
-                const SizedBox(height: 24),
+                 // Saludo personalizado
+                 _buildWelcomeSection(context),
+                 const SizedBox(height: 24),
+                 
+                 // Botones de acción principales
+                 _buildActionButtons(context),
+                 const SizedBox(height: 24),
+                 
+                 // Demo de Web Scraping
+                 _buildWebScrapingDemo(context),
+                 const SizedBox(height: 24),
 
                 if (isWide)
                   Row(
@@ -152,10 +162,164 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+   );
+ }
 
-  Widget _buildTodoSection(BuildContext context) {
+   Widget _buildActionButtons(BuildContext context) {
+     return Column(
+       crossAxisAlignment: CrossAxisAlignment.start,
+       children: [
+         const Text(
+           'Acciones Rápidas',
+           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+         ),
+         const SizedBox(height: 12),
+         Row(
+           children: [
+             Expanded(
+               child: _buildActionButton(
+                 context,
+                 icon: Icons.psychology,
+                 label: 'Explicar IA',
+                 color: const Color(0xFF6A11CB),
+                 onTap: () => HowAIWorksModal.show(context),
+               ),
+             ),
+             const SizedBox(width: 12),
+             Expanded(
+               child: _buildActionButton(
+                 context,
+                 icon: Icons.lightbulb,
+                 label: 'Recomendaciones',
+                 color: Colors.orange,
+                 onTap: () => Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (context) => RecommendationsScreen(user: user),
+                   ),
+                 ),
+               ),
+             ),
+           ],
+         ),
+       ],
+     );
+   }
+
+   Widget _buildActionButton(
+     BuildContext context, {
+     required IconData icon,
+     required String label,
+     required Color color,
+     required VoidCallback onTap,
+   }) {
+     return Card(
+       elevation: 4,
+       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+       child: InkWell(
+         onTap: onTap,
+         borderRadius: BorderRadius.circular(12),
+         child: Container(
+           padding: const EdgeInsets.all(16),
+           decoration: BoxDecoration(
+             borderRadius: BorderRadius.circular(12),
+             gradient: LinearGradient(
+               begin: Alignment.topLeft,
+               end: Alignment.bottomRight,
+               colors: [color.withValues(alpha: 0.9), color],
+             ),
+           ),
+           child: Column(
+             children: [
+               Icon(icon, color: Colors.white, size: 32),
+               const SizedBox(height: 8),
+               Text(
+                 label,
+                 style: const TextStyle(
+                   color: Colors.white,
+                   fontWeight: FontWeight.bold,
+                   fontSize: 14,
+                 ),
+                 textAlign: TextAlign.center,
+               ),
+             ],
+           ),
+         ),
+       ),
+     );
+   }
+
+   Widget _buildWebScrapingDemo(BuildContext context) {
+     return Card(
+       elevation: 4,
+       child: Padding(
+         padding: const EdgeInsets.all(20),
+         child: Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Row(
+               children: [
+                 Container(
+                   padding: const EdgeInsets.all(8),
+                   decoration: BoxDecoration(
+                      color: Colors.teal.withValues(alpha: 0.1),
+                     borderRadius: BorderRadius.circular(8),
+                   ),
+                   child: Icon(
+                     Icons.language,
+                     color: Colors.teal,
+                     size: 24,
+                   ),
+                 ),
+                 const SizedBox(width: 12),
+                 Expanded(
+                   child: Column(
+                     crossAxisAlignment: CrossAxisAlignment.start,
+                     children: [
+                       const Text(
+                         'Web Scraping Demo',
+                         style: TextStyle(
+                           fontSize: 18,
+                           fontWeight: FontWeight.bold,
+                           color: Color(0xFF333333),
+                         ),
+                       ),
+                       Text(
+                         'Prueba el sistema de scraping de alimentos',
+                         style: TextStyle(
+                           fontSize: 14,
+                           color: Colors.grey.shade600,
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+               ],
+             ),
+             const SizedBox(height: 16),
+             SizedBox(
+               width: double.infinity,
+               child: ElevatedButton.icon(
+                 onPressed: () => Navigator.pushNamed(context, '/food_scraping_demo'),
+                 icon: const Icon(Icons.explore),
+                 label: const Text('Explorar Demo'),
+                 style: ElevatedButton.styleFrom(
+                   backgroundColor: Colors.teal,
+                   foregroundColor: Colors.white,
+                   padding: const EdgeInsets.symmetric(vertical: 16),
+                   shape: RoundedRectangleBorder(
+                     borderRadius: BorderRadius.circular(12),
+                   ),
+                 ),
+               ),
+             ),
+           ],
+         ),
+       ),
+     );
+   }
+
+   Widget _buildTodoSection(BuildContext context) {
     return Card(
       color: Colors.orange.shade50,
       child: Padding(

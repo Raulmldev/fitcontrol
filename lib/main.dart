@@ -7,6 +7,8 @@ import 'View/nutrition_screen.dart';
 import 'View/workout_screen.dart';
 import 'View/health_screen.dart';
 import 'View/conclusion_screen.dart';
+import 'View/recommendations_screen.dart';
+import 'View/food_scraping_demo_screen.dart';
 import 'Model/user.dart';
 
 void main() {
@@ -47,6 +49,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginScreen(),
         '/ai_team': (context) => const AIExpertTeamScreen(),
+        '/food_scraping_demo': (context) => const FoodScrapingDemoScreen(),
       },
       onGenerateRoute: (settings) {
         // Rutas que requieren parámetros
@@ -69,28 +72,32 @@ class MyApp extends StatelessWidget {
         final user = args?['user'] as User?;
 
         if (user != null) {
-          switch (settings.name) {
-            case '/ai_chat':
-              return MaterialPageRoute(
-                builder: (context) => AIChatScreen(user: user),
-              );
-            case '/nutrition':
-              return MaterialPageRoute(
-                builder: (context) => NutritionScreen(user: user),
-              );
-            case '/workout':
-              return MaterialPageRoute(
-                builder: (context) => WorkoutScreen(user: user),
-              );
-            case '/health':
-              return MaterialPageRoute(
-                builder: (context) => HealthScreen(user: user),
-              );
-            case '/conclusion':
-              return MaterialPageRoute(
-                builder: (context) => ConclusionScreen(user: user),
-              );
-          }
+           switch (settings.name) {
+             case '/ai_chat':
+               return MaterialPageRoute(
+                 builder: (context) => AIChatScreen(user: user),
+               );
+             case '/nutrition':
+               return MaterialPageRoute(
+                 builder: (context) => NutritionScreen(user: user),
+               );
+             case '/workout':
+               return MaterialPageRoute(
+                 builder: (context) => WorkoutScreen(user: user),
+               );
+             case '/health':
+               return MaterialPageRoute(
+                 builder: (context) => HealthScreen(user: user),
+               );
+             case '/conclusion':
+               return MaterialPageRoute(
+                 builder: (context) => ConclusionScreen(user: user),
+               );
+             case '/recommendations':
+               return MaterialPageRoute(
+                 builder: (context) => RecommendationsScreen(user: user),
+               );
+           }
         }
 
         // Si es una ruta protegida y no hay usuario, redirigir al login
@@ -100,6 +107,7 @@ class MyApp extends StatelessWidget {
           '/workout',
           '/health',
           '/conclusion',
+          '/recommendations',
         ].contains(settings.name)) {
           return MaterialPageRoute(builder: (context) => const LoginScreen());
         }

@@ -5,6 +5,34 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
+        }
+    }
+    
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
+            if (android.namespace == null) {
+                android.namespace = "com.example.fitcontrol"
+            }
+        }
+    }
+}
+
+allprojects {
+    afterEvaluate {
+        if (project.hasProperty("android")) {
+            val android = project.extensions.getByName("android") as com.android.build.gradle.BaseExtension
+            if (android.namespace == null) {
+                android.namespace = "com.example.fitcontrol"
+            }
+        }
+    }
+}
+
 android {
     namespace = "com.example.fitcontrol"
     compileSdk = 36

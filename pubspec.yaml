@@ -52,6 +52,9 @@ dependencies:
   dio: ^5.7.0
   http: ^1.2.2
   
+  # Web Scraping & HTML Parsing
+  html: ^0.15.4
+  
   # AI/ML
   google_generative_ai: ^0.4.6
   
@@ -79,7 +82,7 @@ dependencies:
   jiffy: ^6.3.0
   
   # Machine Learning / TensorFlow Lite
-  tflite_flutter: ^0.9.0
+  # tflite_flutter: ^0.9.0  # Temporarily commented due to namespace issues
   
   # Image Processing for ML
   image: ^4.0.17
