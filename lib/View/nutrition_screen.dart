@@ -109,7 +109,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             _buildHeader(context),
             const SizedBox(height: 24),
             
-            // NUEVO: Buscador con Web Scraping
+            // Buscador de alimentos
             _buildFoodSearchWithScraping(),
             const SizedBox(height: 24),
             
@@ -153,11 +153,6 @@ class _NutritionScreenState extends State<NutritionScreen> {
                   ),
                 ),
                 const Spacer(),
-                Chip(
-                  label: const Text('Web Scraping'),
-                  backgroundColor: Colors.green.withValues(alpha: 0.1),
-                  labelStyle: TextStyle(color: Colors.green, fontSize: 12),
-                ),
               ],
             ),
             const SizedBox(height: 16),
