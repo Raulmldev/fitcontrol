@@ -28,7 +28,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
   FoodNutritionData? _selectedFood;
   bool _isLoading = false;
   final List<String> _searchHistory = [];
-  int _selectedMealTypeIndex = 0; // Índice del tipo de comida seleccionado
+  int _selectedMealTypeIndex = 0;
+  List<Meal> _todayMeals = [];
+  bool _isLoadingMeals = false;
   
   // Opciones de comida predeterminadas
   final List<Map<String, dynamic>> _mealTypes = [
@@ -37,7 +39,38 @@ class _NutritionScreenState extends State<NutritionScreen> {
     {'name': 'Merienda', 'icon': Icons.wb_twilight, 'time': '17:00'},
     {'name': 'Cena', 'icon': Icons.nightlight, 'time': '20:00'},
   ];
-
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadTodayMeals();
+  }
+  
+  Future<void> _loadTodayMeals() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoadingMeals = true;
+    });
+    
+    try {
+      final meals = await DatabaseService().getMealsByDate(widget.user.id, DateTime.now());
+      if (mounted) {
+        setState(() {
+          _todayMeals = meals;
+          _isLoadingMeals = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading meals: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingMeals = false;
+        });
+      }
+    }
+  }
+   
   Future<void> _searchFood(String foodName) async {
     if (foodName.trim().isEmpty) return;
 
@@ -576,6 +609,8 @@ class _NutritionScreenState extends State<NutritionScreen> {
       _quantityController.text = '100';
       _selectedMealTypeIndex = 0;
     });
+    
+    _loadTodayMeals();
   }
 
   Widget _buildHeader(BuildContext context) {
@@ -692,6 +727,178 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 
   Widget _buildMealList(BuildContext context) {
+    if (_isLoadingMeals) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Column(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  'Cargando comidas...',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Calcular totales
+    double totalCalories = 0;
+    double totalProtein = 0;
+    double totalCarbs = 0;
+    double totalFat = 0;
+
+    for (final meal in _todayMeals) {
+      totalCalories += meal.totalCalories;
+      totalProtein += meal.totalProtein;
+      totalCarbs += meal.totalCarbs;
+      totalFat += meal.totalFat;
+    }
+
+    // Si no hay comidas, mostrar mensaje
+    if (_todayMeals.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Comidas de Hoy',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      // Navigate to chat with Nutritionist context
+                    },
+                    child: const Text('Consultar a Nutricionista'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.restaurant_menu,
+                        size: 48,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No has registrado ninguna comida hoy',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Usa el botón "Registrar Comida" para añadir tus alimentos',
+                        style: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (totalCalories > 0) ...[
+                const Divider(),
+                _buildTotalRow('Calorías totales', '${totalCalories.toInt()} kcal'),
+                _buildTotalRow('Proteína', '${totalProtein.toInt()}g'),
+                _buildTotalRow('Carbohidratos', '${totalCarbs.toInt()}g'),
+                _buildTotalRow('Grasas', '${totalFat.toInt()}g'),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Agrupar comidas por tipo
+    final Map<String, List<Meal>> mealsByType = {
+      'breakfast': [],
+      'lunch': [],
+      'snack': [],
+      'dinner': [],
+    };
+
+    for (final meal in _todayMeals) {
+      if (mealsByType.containsKey(meal.mealType)) {
+        mealsByType[meal.mealType]!.add(meal);
+      }
+    }
+
+    // Obtener nombres legibles
+    final mealTypeNames = {
+      'breakfast': 'Desayuno',
+      'lunch': 'Almuerzo',
+      'snack': 'Merienda',
+      'dinner': 'Cena',
+    };
+
+    // Construir la lista de widgets
+    final List<Widget> mealWidgets = [];
+    
+    for (final entry in mealsByType.entries) {
+      final type = entry.key;
+      final meals = entry.value;
+      
+      if (meals.isNotEmpty) {
+        mealWidgets.add(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...meals.map((meal) {
+                final mealName = meal.foods.isNotEmpty 
+                    ? meal.foods.map((f) => f.name).join(', ')
+                    : meal.name;
+                return Column(
+                  children: [
+                    _buildMealItem(
+                      mealTypeNames[type]!,
+                      mealName,
+                      meal.totalCalories.toInt(),
+                    ),
+                    const Divider(),
+                  ],
+                );
+              }),
+            ],
+          ),
+        );
+      }
+    }
+
+    // Si hay comidas pero no se mostraron (por ejemplo, tipos desconocidos)
+    if (mealWidgets.isEmpty) {
+      mealWidgets.add(
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              'No hay comidas para mostrar',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -714,15 +921,35 @@ class _NutritionScreenState extends State<NutritionScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            _buildMealItem('Desayuno', 'Avena con frutas y nueces', 450),
-            const Divider(),
-            _buildMealItem('Almuerzo', 'Pechuga de pollo con ensalada', 650),
-            const Divider(),
-            _buildMealItem('Merienda', 'Yogurt griego', 150),
-            const Divider(),
-            _buildMealItem('Cena', 'Pendiente', 0, isPending: true),
+            ...mealWidgets,
+            if (totalCalories > 0) ...[
+              const Divider(),
+              const SizedBox(height: 8),
+              const Text(
+                'Totales del día',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildTotalRow('Calorías', '${totalCalories.toInt()} kcal'),
+              _buildTotalRow('Proteína', '${totalProtein.toInt()}g'),
+              _buildTotalRow('Carbohidratos', '${totalCarbs.toInt()}g'),
+              _buildTotalRow('Grasas', '${totalFat.toInt()}g'),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTotalRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey.shade700)),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
