@@ -1,43 +1,30 @@
+import 'dart:async';
 import '../Model/ai_message.dart';
-import '../Model/meal.dart';
-import '../Model/shopping_list.dart';
 import '../Model/user.dart';
+import '../Model/shopping_list.dart';
 import 'ai_agent_base.dart';
 
-/// Agente IA experto en nutrición y gestión de comidas
-///
-/// Este agente tiene más de 30 años de experiencia en:
-/// - Nutrición clínica y deportiva
-/// - Planificación de dietas personalizadas
-/// - Análisis de composición de alimentos
-/// - Gestión de listas de compras inteligentes
-/// - Coordinación con entrenadores y expertos en salud
+/// Agente Especialista en Nutrición y Dietética
+/// "Dra. Elena Martínez" - Nutrition Expert
 class NutritionAgent extends AIAgentBase {
   NutritionAgent()
-    : super(
-        id: 'nutrition_expert_001',
-        name: 'Dra. Elena Martínez',
-        type: 'nutritionist',
-        description:
-            'Nutricionista clínica y deportiva con 32 años de experiencia. '
-            'Especialista en dietética personalizada, nutrición molecular y '
-            'planificación de comidas para diferentes objetivos de salud. '
-            'Doctora en Ciencias de la Nutrición por la Universidad de Barcelona '
-            'y miembro fundador de la Sociedad Española de Nutrición Deportiva.',
-        specialization: 'Nutrición Clínica y Deportiva',
-        capabilities: [
-          'Planificación de dietas personalizadas',
-          'Análisis de composición de alimentos',
-          'Cálculo de necesidades calóricas y macronutrientes',
-          'Gestión de alergias e intolerancias alimentarias',
-          'Optimización de listas de compras',
-          'Recomendaciones de suplementación',
-          'Educación nutricional',
-          'Coordinación con planes de entrenamiento',
-        ],
-      );
-
-  // Se elimina el override de processQuery para usar la implementación base con DeepSeek
+      : super(
+          id: 'nutrition_expert',
+          name: 'Dra. Elena Martínez',
+          type: 'nutrition',
+          description:
+              'Especialista en nutrición clínica y dietética aplicada al fitness. Más de 15 años de experiencia ayudando a personas a alcanzar sus objetivos de salud a través de la alimentación.',
+          specialization: 'Nutrición y Dietética',
+          capabilities: [
+            'Planificación de dietas personalizadas',
+            'Cálculo de macros y calorías',
+            'Análisis de valor nutricional',
+            'Recomendaciones de suplementación',
+            'Educación nutricional',
+            'Gestión de alergias e intolerancias',
+            'Creación de listas de compras saludables',
+          ],
+        );
 
   @override
   Future<List<AIAgentMessage>> generateRecommendations(
@@ -45,61 +32,68 @@ class NutritionAgent extends AIAgentBase {
     Map<String, dynamic>? context,
     int count = 3,
   }) async {
+    // Generar recomendaciones nutricionales personalizadas
     final recommendations = <AIAgentMessage>[];
 
-    // Recomendación 1: Balance calórico
-    recommendations.add(
-      createMessage(
-        content: '''
-📊 ANÁLISIS DE BALANCE CALÓRICO
+    // Obtener datos de progreso si están disponibles
+    final progress = context?['progress'] as Map<String, dynamic>?;
 
-Basándome en tu perfil:
-• TDEE: ${user.tdee.toStringAsFixed(0)} kcal/día
-• Objetivo: ${user.fitnessGoal}
-• Recomendación: ${user.targetCalories} kcal/día
-
-Consejo: Distribuye tus calorías en 4-5 comidas durante el día para mantener energía estable y evitar picos de hambre.
-      ''',
+    for (int i = 0; i < count; i++) {
+      final message = createMessage(
+        content: _generateNutritionTip(user, progress, i),
         type: MessageType.recommendation,
-        metadata: {'category': 'calories', 'priority': 'high'},
-      ),
-    );
+        metadata: {
+          'category': 'nutrition',
+          'priority': i == 0 ? 'high' : 'medium',
+          'userGoal': user.fitnessGoal,
+        },
+        suggestions: [
+          'Explain this recommendation in more detail',
+          'Give me a meal example',
+          'Create a meal plan for this',
+        ],
+      );
+      recommendations.add(message);
+    }
 
-    // Recomendación 2: Distribución de macronutrientes
-    recommendations.add(
-      createMessage(
-        content: '''
-🥗 DISTRIBUCIÓN DE MACRONUTRIENTES
+    return recommendations;
+  }
 
-Para tu objetivo "${user.fitnessGoal}", recomiendo:
-• Proteínas: ${(user.targetCalories * 0.30 / 4).toStringAsFixed(0)}g (30%)
-• Carbohidratos: ${(user.targetCalories * 0.40 / 4).toStringAsFixed(0)}g (40%)
-• Grasas: ${(user.targetCalories * 0.30 / 9).toStringAsFixed(0)}g (30%)
+  String _generateNutritionTip(
+      User user, Map<String, dynamic>? progress, int index) {
+    final tips = [
+      '''
+💡 **Optimiza tu distribución de macronutrientes**
 
-Prioriza proteínas de alta calidad en cada comida para mantener masa muscular.
-      ''',
-        type: MessageType.recommendation,
-        metadata: {'category': 'macros', 'priority': 'high'},
-      ),
-    );
+Para tu objetivo de "${user.fitnessGoal}", te recomiendo:
 
-    // Recomendación 3: Hidratación
-    recommendations.add(
-      createMessage(
-        content: '''
-💧 RECOMENDACIÓN DE HIDRATACIÓN
+• **Proteínas**: ${(user.targetCalories * 0.3 / 4).round()}g (30%)
+• **Carbohidratos**: ${(user.targetCalories * 0.4 / 4).round()}g (40%)
+• **Grasas**: ${(user.targetCalories * 0.3 / 9).round()}g (30%)
 
-Tu peso actual: ${user.weight} kg
-Agua recomendada: ${(user.weight * 35).toStringAsFixed(0)} ml/día
+¿Te gustaría que te prepare un plan de comidas detallado?
+''',
+      '''
+🥗 **La importancia de las proteínas en el desayuno**
 
-Consejo: Bebe 500ml de agua al despertar y distribuye el resto uniformemente durante el día.
-      ''',
-        type: MessageType.recommendation,
-        metadata: {'category': 'hydration', 'priority': 'medium'},
-      ),
-    );
+Comenzar el día con 25-30g de proteína en el desayuno puede:
+- Mejorar el control del apetito
+- Estabilizar los niveles de energía
+- Apoyar la recuperación muscular
 
-    return recommendations.take(count).toList();
+Ejemplo: 3 huevos + 150g de griego + 30g de almendras.
+''',
+      '''
+💧 **Hidratación y rendimiento**
+
+Estás bebiendo suficiente agua? 
+Tu requerimiento diario es aproximadamente: ${(user.weight * 35).round()}ml
+
+La deshidratación incluso leve puede afectar tu rendimiento en el gym hasta un 20%.
+''',
+    ];
+
+    return tips[index % tips.length];
   }
 
   @override
@@ -109,198 +103,323 @@ Consejo: Bebe 500ml de agua al despertar y distribuye el resto uniformemente dur
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    String analysis;
-
     switch (dataType) {
       case 'nutrition':
-        analysis = _analyzeNutritionData(user, startDate, endDate);
-        break;
-      case 'meals':
-        analysis = _analyzeMealPatterns(user);
-        break;
-      case 'shopping':
-        analysis = _analyzeShoppingEfficiency(user);
-        break;
+        return _analyzeNutritionHabits(user);
+      case 'meal_log':
+        return _analyzeMealLog(user);
+      case 'progress':
+        return _analyzeProgress(user);
       default:
-        analysis = 'Tipo de análisis no reconocido para datos de nutrición.';
+        return createMessage(
+          content: 'No tengo datos de tipo "$dataType" para analizar en este momento.',
+          type: MessageType.text,
+        );
     }
+  }
 
-    final message = createMessage(content: analysis, type: MessageType.insight);
+  Future<AIAgentMessage> _analyzeNutritionHabits(User user) async {
+    // Simular análisis de hábitos nutricionales
+    final message = createMessage(
+      content: '''
+📊 **Análisis de Nutricional Personalizado**
 
-    sendMessage(message);
+Basado en tu perfil:
+- Objetivo: ${user.fitnessGoal}
+- Calorías diarias: ${user.targetCalories}
+- Restricciones: ${user.dietaryPreferences.isNotEmpty ? user.dietaryPreferences.join(', ') : 'Ninguna'}
+- Alergias: ${user.allergies.isNotEmpty ? user.allergies.join(', ') : 'Ninguna'}
+
+**Puntuación Nutricional: 85/100** ✅
+
+Áreas de mejora:
+1. Aumentar consumo de proteínas vegetales
+2. Incluir más omega-3 en tu dieta
+3. Reducir azúcares refinados
+
+¿Quieres que genere un plan de acción específico?
+''',
+      type: MessageType.insight,
+      metadata: {'score': 85, 'category': 'nutrition'},
+      suggestions: [
+        'Show me a detailed meal plan',
+        'What foods should I eat more of?',
+        'Create a shopping list',
+      ],
+    );
+
+    return message;
+  }
+
+  Future<AIAgentMessage> _analyzeMealLog(User user) async {
+    final message = createMessage(
+      content: '''
+📋 **Análisis del Registro de Comidas**
+
+He revisado tu registro de comidas de la última semana:
+
+**Patrón detectado:**
+- Desayuno: Inconsistente (50% de los días)
+- Almuerzo: Regular (90% de los días)
+- cena: Excess tarde (60% de los días)
+
+**Recomendación:**
+Establece horarios fijos para tus comidas.
+Considera un snack saludable a las 4 PM para evitar hunger at night.
+
+**Próximos pasos:**
+1. Planificar el desayuno la noche anterior
+2. Preparar snacks saludables
+3. Establecer horario de cena antes de las 9 PM
+''',
+      type: MessageType.insight,
+      metadata: {'analyzedDays': 7, 'score': 72},
+    );
+
+    return message;
+  }
+
+  Future<AIAgentMessage> _analyzeProgress(User user) async {
+    final message = createMessage(
+      content: '''
+📈 **Reporte de Progreso Nutricional**
+
+**Esta semana:**
+- Adherencia al plan: 78%
+- Calorías promedio: ${user.targetCalories - 150} kcal
+- Consistency score: 8/10
+
+**Logros:**
+✅ Cumples con tu objetivo de proteínas
+✅ Buena hidratación
+⚠️ Necesitas mejorar el consumo de vegetales
+
+**Sugerencia para la próxima semana:**
+Incremente el consumo de vegetales a 3 porciones diarias.
+¿Quieres que te prepare una lista de compras?
+''',
+      type: MessageType.insight,
+      metadata: {'week': 3, 'adherence': 78},
+    );
+
     return message;
   }
 
   @override
   Future<String> respondToCoordination(AgentCoordinationRequest request) async {
-    // Procesar solicitudes de coordinación de otros agentes
     switch (request.requestType) {
-      case 'workout_nutrition':
-        return _coordinateWithWorkoutAgent(request);
-      case 'health_dietary_restrictions':
-        return _coordinateWithHealthAgent(request);
-      case 'meal_plan_adjustment':
-        return _adjustMealPlan(request);
+      case 'nutrition_plan':
+        return _handleNutritionPlanRequest(request);
+      case 'meal_recommendation':
+        return _handleMealRecommendation(request);
+      case 'calorie_check':
+        return _handleCalorieCheck(request);
+      case 'shopping_list':
+        return _handleShoppingListRequest(request);
       default:
-        return 'Solicitud de coordinación recibida pero no procesada específicamente.';
+        return 'Solicitud de coordinación no reconocida: ${request.requestType}';
     }
   }
 
-  // MÉTODOS PRIVADOS DE RESPUESTA
-
-  // Unused mock methods removed
-
-  String _analyzeNutritionData(
-    User user,
-    DateTime? startDate,
-    DateTime? endDate,
-  ) {
-    return '''
-📊 ANÁLISIS DE DATOS NUTRICIONALES
-
-Período: ${startDate?.toString() ?? 'últimos 30 días'}
-
-OBSERVACIONES:
-• Promedio calórico: Por calcular con datos históricos
-• Tendencia de peso: Estable
-• Cumplimiento de objetivos: 85%
-
-RECOMENDACIONES:
-1. Mantener consistencia en el desayuno
-2. Aumentar ingesta de fibra (objetivo: 30g/día)
-3. Distribución de proteínas en 4 tomas
-
-Te coordinaré con el agente de salud para ajustar según tus parámetros vitales.
-    ''';
-  }
-
-  String _analyzeMealPatterns(User user) {
-    return '''
-🍽️ PATRONES DE ALIMENTACIÓN
-
-Frecuencia de comidas: 4 veces/día (ideal)
-Variación de alimentos: Buena
-Preparación de comidas: Regular
-
-ÁREAS DE MEJORA:
-• Preparar snacks saludables con anticipación
-• Variedad de vegetales de colores
-• Timing de comidas post-entreno
-    ''';
-  }
-
-  String _analyzeShoppingEfficiency(User user) {
-    return '''
-🛒 EFICIENCIA DE COMPRAS
-
-Análisis de compras recientes:
-• Cumplimiento de lista: 92%
-• Desperdicio estimado: 5%
-• Economía: Optimizada
-
-Me he coordinado con tu plan de ejercicios para incluir alimentos que maximicen tu recuperación muscular.
-    ''';
-  }
-
-  // MÉTODOS DE COORDINACIÓN
-
-  String _coordinateWithWorkoutAgent(AgentCoordinationRequest request) {
-    final data = request.data;
-    final workoutIntensity = data['intensity'] ?? 'moderate';
-    final workoutDuration = data['duration'] ?? 60;
+  String _handleNutritionPlanRequest(AgentCoordinationRequest request) {
+    final userData = request.data['user'] as Map<String, dynamic>;
+    final goal = userData['fitnessGoal'] ?? 'general_health';
 
     return '''
-COORDINACIÓN CON ENTRENADOR - NUTRICIÓN PRE/POST ENTRENO
+He creado un plan nutricional para el objetivo: "$goal"
 
-Basado en la sesión de entrenamiento ($workoutDuration min, intensidad $workoutIntensity):
+**Resumen del plan:**
+- Duración: 7 días
+- Calorías diarias: ${request.data['targetCalories'] ?? userData['targetCalories']} kcal
+- Distribución: 30% proteína, 40% carbs, 30% grasa
 
-RECOMENDACIONES NUTRICIONALES:
-• Pre-entreno (2-3h antes): Carbohidratos complejos + proteína moderada
-• Durante entreno: Hidratación con electrolitos
-• Post-entreno (30-60min): 20-30g proteína de rápida absorción + carbohidratos
+**Fases del plan:**
+1. Día 1-2: Transición y limpieza
+2. Día 3-5: Implementación completa
+3. Día 6-7: Ajuste y optimización
 
-He ajustado tus macronutrientes del día para optimizar recuperación y rendimiento.
-    ''';
+¿Te gustaría que detalle el plan para cada día?
+''';
   }
 
-  String _coordinateWithHealthAgent(AgentCoordinationRequest request) {
-    final data = request.data;
-    final healthCondition = data['healthCondition'] ?? 'general';
+  String _handleMealRecommendation(AgentCoordinationRequest request) {
+    final mealType = request.data['mealType'] ?? 'snack';
 
     return '''
-COORDINACIÓN CON EXPERTO EN SALUD - RESTRICCIONES DIETÉTICAS
+Aquí tienes una recomendación de $mealType balanceada:
 
-Considerando condición de salud: $healthCondition
+🍽️ **Opción recomendada:**
+- Pechuga de pollo a la plancha (150g)
+- Arroz integral (100g cocido)
+- Ensalada mixta con aderezo ligero
+- Fruta de temporada
 
-AJUSTES REALIZADOS:
-• Reducción de sodio para presión arterial
-• Aumento de alimentos anti-inflamatorios
-• Suplementación específica validada
-• Frecuencia de comidas ajustada
+**Valor nutricional:**
+- Calorías: ~450 kcal
+- Proteína: 35g
+- Carbohidratos: 45g
+- Grasa: 12g
 
-Plan nutricional modificado y seguro para el usuario.
-    ''';
+¿Te gustaría alternativas para esta comida?
+''';
   }
 
-  String _adjustMealPlan(AgentCoordinationRequest request) {
+  String _handleCalorieCheck(AgentCoordinationRequest request) {
+    final calories = request.data['calories'] ?? 0;
+    final target = request.data['targetCalories'] ?? 2000;
+    final remaining = target - calories;
+
     return '''
-AJUSTE DE PLAN DE COMIDAS - COORDINACIÓN MULTI-AGENTE
+**Control de Calorías:**
 
-He recibido información de múltiples agentes y he ajustado el plan de comidas:
+Consumido: $calories kcal
+Objetivo: $target kcal
+Restante: $remaining kcal
 
-CAMBIOS REALIZADOS:
-• Adaptado a nuevo plan de entrenamiento
-• Considerados parámetros de salud actualizados
-• Optimizada lista de compras correspondiente
+${remaining < 0 ? '⚠️ Has excedido tu objetivo diario.' : remaining < 200 ? '🎯 Muy cerca de tu objetivo!' : '✅ Estas dentro del presupuesto.'}
 
-El plan está ahora sincronizado con todos tus objetivos.
-    ''';
+${remaining > 0 ? 'Te recomiendo una comida ligera para terminar el día.' : 'Te sugiero un entrenamiento para compensar el exceso.'}
+''';
   }
 
-  // MÉTODO PÚBLICO PARA GENERAR LISTA DE COMPRAS
+  String _handleShoppingListRequest(AgentCoordinationRequest request) {
+    final userData = request.data['user'] as User;
+    final preferences = userData.dietaryPreferences;
 
-  Future<ShoppingList> generateSmartShoppingList({
-    required String userId,
-    required List<Meal> plannedMeals,
-    DateTime? date,
-  }) async {
-    final shoppingList = ShoppingList(
-      userId: userId,
-      name: 'Lista de compras ${date ?? DateTime.now()}',
-      date: date ?? DateTime.now(),
-      items: [],
-    );
+    return '''
+📝 **Lista de Compras Inteligente**
 
-    // Agrupar ingredientes de todas las comidas
-    final Map<String, ShoppingItem> aggregatedItems = {};
+Basado en tu plan y preferencias (${preferences.join(', ')}):
 
-    for (final meal in plannedMeals) {
-      for (final food in meal.foods) {
-        final key = food.name.toLowerCase();
+**Proteínas:**
+- Pechuga de pollo: 1kg
+- Salmón fresco: 500g
+- Huevos: 2 docenas
+- Greek yogurt: 1kg
 
-        if (aggregatedItems.containsKey(key)) {
-          final existing = aggregatedItems[key]!;
-          aggregatedItems[key] = ShoppingItem(
-            name: existing.name,
-            quantity: existing.quantity + food.quantity,
-            unit: existing.unit,
-            category: existing.category,
-            priority: existing.priority,
-          );
-        } else {
-          aggregatedItems[key] = ShoppingItem(
-            name: food.name,
-            quantity: food.quantity,
-            unit: food.unit,
-            category: food.category ?? 'Otros',
-            priority: 2,
-          );
+**Carbohidratos complejos:**
+- Arroz integral: 2kg
+- Avena: 1kg
+- Patatas dulces: 1kg
+- Pan integral: 1 unidad
+
+**Verduras y frutas:**
+- Brócoli: 2 unidades
+- Espinacas: 300g
+- Manzana: 6 unidades
+- Plátano: 6 unidades
+
+**Grasas saludables:**
+- Aguacate: 3 unidades
+- Almendras: 500g
+- Aceite de oliva extra virgen: 1L
+
+¿Quieres que guarde esta lista en tu perfil?
+''';
+  }
+
+  /// Genera una lista de compras inteligente basada en el plan nutricional
+  Future<ShoppingList> generateSmartShoppingList(
+      User user, List<String> meals) async {
+    final items = <ShoppingItem>[];
+    final now = DateTime.now();
+
+    // Agregar items base para cada comida
+    for (final meal in meals) {
+      items.addAll(_getItemsForMeal(meal));
+    }
+
+    // Filtrar por preferencias y alergias
+    final filteredItems = _filterByPreferences(items, user);
+
+    return ShoppingList(
+      userId: user.id,
+      name: 'Lista de compras - ${now.day}/${now.month}/${now.year}',
+      date: now,
+    )..items = filteredItems;
+  }
+
+  List<ShoppingItem> _getItemsForMeal(String mealType) {
+    switch (mealType.toLowerCase()) {
+      case 'desayuno':
+        return [
+          ShoppingItem(
+            name: 'Huevos',
+            category: 'proteinas',
+            quantity: 6,
+            unit: 'unidades',
+            price: 2.50,
+          ),
+          ShoppingItem(
+            name: 'Avena',
+            category: 'carbohidratos',
+            quantity: 500,
+            unit: 'g',
+            price: 3.00,
+          ),
+          ShoppingItem(
+            name: 'Plátano',
+            category: 'frutas',
+            quantity: 5,
+            unit: 'unidades',
+            price: 1.50,
+          ),
+        ];
+      case 'almuerzo':
+      case 'cena':
+        return [
+          ShoppingItem(
+            name: 'Pechuga de pollo',
+            category: 'proteinas',
+            quantity: 500,
+            unit: 'g',
+            price: 6.00,
+          ),
+          ShoppingItem(
+            name: 'Arroz integral',
+            category: 'carbohidratos',
+            quantity: 1000,
+            unit: 'g',
+            price: 3.50,
+          ),
+          ShoppingItem(
+            name: 'Brócoli',
+            category: 'verduras',
+            quantity: 2,
+            unit: 'unidades',
+            price: 2.00,
+          ),
+        ];
+      default:
+        return [
+          ShoppingItem(
+            name: 'Yogur griego',
+            category: 'lacteos',
+            quantity: 500,
+            unit: 'g',
+            price: 4.00,
+          ),
+          ShoppingItem(
+            name: 'Almendras',
+            category: 'frutos_secos',
+            quantity: 200,
+            unit: 'g',
+            price: 5.00,
+          ),
+        ];
+    }
+  }
+
+  List<ShoppingItem> _filterByPreferences(
+      List<ShoppingItem> items, User user) {
+    return items.where((item) {
+      // Filtrar por alergias
+      for (final allergy in user.allergies) {
+        if (item.name.toLowerCase().contains(allergy.toLowerCase())) {
+          return false;
         }
       }
-    }
-
-    shoppingList.items.addAll(aggregatedItems.values);
-
-    return shoppingList;
+      return true;
+    }).toList();
   }
 }

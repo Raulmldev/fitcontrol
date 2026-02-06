@@ -13,19 +13,31 @@ class FoodScrapingDemoScreen extends StatefulWidget {
 class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
   final FoodRecognitionService _recognitionService = FoodRecognitionService();
   final FoodAPIService _apiService = FoodAPIService();
-  
+
   final TextEditingController _foodController = TextEditingController();
   String _currentFood = '';
   bool _isLoading = false;
   Map<String, dynamic>? _lastResult;
   Map<String, dynamic>? _systemStats;
   final List<String> _searchHistory = [];
-  
+
   // Lista de alimentos de demostración
   final List<String> _demoFoods = [
-    'pollo', 'arroz', 'manzana', 'broccoli', 'huevo',
-    'banana', 'leche', 'pan', 'pasta', 'salmón',
-    'pizza', 'hamburguesa', 'ensalada', 'sushi', 'aguacate'
+    'pollo',
+    'arroz',
+    'manzana',
+    'broccoli',
+    'huevo',
+    'banana',
+    'leche',
+    'pan',
+    'pasta',
+    'salmón',
+    'pizza',
+    'hamburguesa',
+    'ensalada',
+    'sushi',
+    'aguacate',
   ];
 
   @override
@@ -55,12 +67,12 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
     try {
       // Usar el servicio de reconocimiento mejorado con scraping
       final result = await _recognitionService.getFoodNutrition(foodName);
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
           _lastResult = result?.toJson();
-          
+
           if (!_searchHistory.contains(foodName.trim())) {
             _searchHistory.add(foodName.trim());
             if (_searchHistory.length > 10) {
@@ -86,19 +98,19 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
 
     try {
       final syncedData = await _apiService.syncFoodDatabase(limit: 5);
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Base sincronizada: ${syncedData.length} alimentos'),
             backgroundColor: Colors.green,
           ),
         );
-        
+
         await _loadSystemStats();
       }
     } catch (e) {
@@ -106,7 +118,7 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
         setState(() {
           _isLoading = false;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error en sincronización: $e'),
@@ -144,28 +156,27 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             // Búsqueda de alimentos
             _buildSearchSection(),
-            
+
             const SizedBox(height: 24),
-            
+
             // Estadísticas del sistema
             _buildSystemStatsSection(),
-            
+
             const SizedBox(height: 24),
-            
+
             // Resultado actual
-            if (_currentFood.isNotEmpty)
-              _buildCurrentResultSection(),
-            
+            if (_currentFood.isNotEmpty) _buildCurrentResultSection(),
+
             const SizedBox(height: 24),
-            
+
             // Alimentos de demostración
             _buildDemoFoodsSection(),
-            
+
             const SizedBox(height: 24),
-            
+
             // Acciones del sistema
             _buildSystemActionsSection(),
-            
+
             const SizedBox(height: 32),
           ],
         ),
@@ -183,18 +194,11 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.search,
-                  color: Colors.deepPurple,
-                  size: 24,
-                ),
+                Icon(Icons.search, color: Colors.deepPurple, size: 24),
                 const SizedBox(width: 12),
                 const Text(
                   'Buscar Alimento',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -220,19 +224,23 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: _isLoading 
-                      ? null 
-                      : () => _searchFood(_foodController.text),
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.search),
+                  onPressed:
+                      _isLoading
+                          ? null
+                          : () => _searchFood(_foodController.text),
+                  icon:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
+                          : const Icon(Icons.search),
                   label: const Text('Buscar'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
@@ -248,26 +256,28 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
                 ),
               ],
             ),
-            
+
             if (_searchHistory.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
                 'Búsquedas recientes:',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
-                children: _searchHistory.map((food) => ActionChip(
-                  label: Text(food),
-                  onPressed: () {
-                    _foodController.text = food;
-                    _searchFood(food);
-                  },
-                )).toList(),
+                children:
+                    _searchHistory
+                        .map(
+                          (food) => ActionChip(
+                            label: Text(food),
+                            onPressed: () {
+                              _foodController.text = food;
+                              _searchFood(food);
+                            },
+                          ),
+                        )
+                        .toList(),
               ),
             ],
           ],
@@ -281,9 +291,7 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(20),
-          child: const Center(
-            child: CircularProgressIndicator(),
-          ),
+          child: const Center(child: CircularProgressIndicator()),
         ),
       );
     }
@@ -297,18 +305,11 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.analytics,
-                  color: Colors.blue,
-                  size: 24,
-                ),
+                Icon(Icons.analytics, color: Colors.blue, size: 24),
                 const SizedBox(width: 12),
                 const Text(
                   'Estadísticas del Sistema',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -328,11 +329,11 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
                   child: _buildStatCard(
                     'Estado',
                     _systemStats!['status'] ?? 'unknown',
-                    _systemStats!['status'] == 'healthy' 
-                        ? Icons.check_circle 
+                    _systemStats!['status'] == 'healthy'
+                        ? Icons.check_circle
                         : Icons.warning,
-                    _systemStats!['status'] == 'healthy' 
-                        ? Colors.green 
+                    _systemStats!['status'] == 'healthy'
+                        ? Colors.green
                         : Colors.orange,
                   ),
                 ),
@@ -344,7 +345,12 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -365,10 +371,7 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           ),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -385,13 +388,10 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             Text(
               'Resultado: $_currentFood',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            
+
             if (_lastResult != null)
               _buildResultDetails(_lastResult!)
             else
@@ -428,14 +428,32 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDetailRow('Calorías', '${result['calories']?.toStringAsFixed(0) ?? 'N/A'} kcal'),
-        _buildDetailRow('Proteína', '${result['protein']?.toStringAsFixed(1) ?? 'N/A'} g'),
-        _buildDetailRow('Carbohidratos', '${result['carbs']?.toStringAsFixed(1) ?? 'N/A'} g'),
-        _buildDetailRow('Grasas', '${result['fat']?.toStringAsFixed(1) ?? 'N/A'} g'),
-        _buildDetailRow('Fibra', '${result['fiber']?.toStringAsFixed(1) ?? 'N/A'} g'),
+        _buildDetailRow(
+          'Calorías',
+          '${result['calories']?.toStringAsFixed(0) ?? 'N/A'} kcal',
+        ),
+        _buildDetailRow(
+          'Proteína',
+          '${result['protein']?.toStringAsFixed(1) ?? 'N/A'} g',
+        ),
+        _buildDetailRow(
+          'Carbohidratos',
+          '${result['carbs']?.toStringAsFixed(1) ?? 'N/A'} g',
+        ),
+        _buildDetailRow(
+          'Grasas',
+          '${result['fat']?.toStringAsFixed(1) ?? 'N/A'} g',
+        ),
+        _buildDetailRow(
+          'Fibra',
+          '${result['fiber']?.toStringAsFixed(1) ?? 'N/A'} g',
+        ),
         _buildDetailRow('Fuente', result['source'] ?? 'N/A'),
         _buildDetailRow('Categoría', result['category'] ?? 'N/A'),
-        _buildDetailRow('Confianza', '${((result['confidence'] ?? 0) * 100).toStringAsFixed(0)}%'),
+        _buildDetailRow(
+          'Confianza',
+          '${((result['confidence'] ?? 0) * 100).toStringAsFixed(0)}%',
+        ),
         if (result['servingSize'] != null)
           _buildDetailRow('Porción', result['servingSize']),
       ],
@@ -471,18 +489,11 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.fastfood,
-                  color: Colors.orange,
-                  size: 24,
-                ),
+                Icon(Icons.fastfood, color: Colors.orange, size: 24),
                 const SizedBox(width: 12),
                 const Text(
                   'Alimentos de Demostración',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -490,14 +501,19 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _demoFoods.map((food) => ActionChip(
-                label: Text(food),
-                onPressed: () {
-                  _foodController.text = food;
-                  _searchFood(food);
-                },
-                backgroundColor: Colors.orange.withValues(alpha: 0.1),
-              )).toList(),
+              children:
+                  _demoFoods
+                      .map(
+                        (food) => ActionChip(
+                          label: Text(food),
+                          onPressed: () {
+                            _foodController.text = food;
+                            _searchFood(food);
+                          },
+                          backgroundColor: Colors.orange.withValues(alpha: 0.1),
+                        ),
+                      )
+                      .toList(),
             ),
           ],
         ),
@@ -515,18 +531,11 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.settings,
-                  color: Colors.purple,
-                  size: 24,
-                ),
+                Icon(Icons.settings, color: Colors.purple, size: 24),
                 const SizedBox(width: 12),
                 const Text(
                   'Acciones del Sistema',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -535,16 +544,19 @@ class _FoodScrapingDemoScreenState extends State<FoodScrapingDemoScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _isLoading ? null : _syncDatabase,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.sync),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Icon(Icons.sync),
                 label: const Text('Sincronizar Base de Datos'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepPurple,

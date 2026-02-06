@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Control/food_scraping_service.dart';
+import '../Model/food_nutrition_data.dart';
 
 /// Widget que muestra información nutricional con datos de web scraping
 class FoodNutritionCard extends StatefulWidget {

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../Model/user.dart';
 import '../Model/meal.dart';
+
+import '../Model/food_nutrition_data.dart';
 import '../Control/food_api_service.dart';
-import '../Control/food_scraping_service.dart';
+
 import '../Control/food_recognition_service.dart';
 import '../Control/database_service.dart';
 import '../Widgets/food_nutrition_card.dart';

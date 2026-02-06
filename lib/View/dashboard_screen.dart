@@ -46,15 +46,12 @@ class DashboardScreen extends StatelessWidget {
                  _buildWelcomeSection(context),
                  const SizedBox(height: 24),
                  
-                 // Botones de acción principales
-                 _buildActionButtons(context),
-                 const SizedBox(height: 24),
-                 
-                 // Demo de Web Scraping
-                 _buildWebScrapingDemo(context),
-                 const SizedBox(height: 24),
+                  // Botones de acción principales
+                  _buildActionButtons(context),
+                  const SizedBox(height: 24),
+                  
 
-                if (isWide)
+                  if (isWide)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -247,79 +244,9 @@ class DashboardScreen extends StatelessWidget {
          ),
        ),
      );
-   }
+    }
 
-   Widget _buildWebScrapingDemo(BuildContext context) {
-     return Card(
-       elevation: 4,
-       child: Padding(
-         padding: const EdgeInsets.all(20),
-         child: Column(
-           crossAxisAlignment: CrossAxisAlignment.start,
-           children: [
-             Row(
-               children: [
-                 Container(
-                   padding: const EdgeInsets.all(8),
-                   decoration: BoxDecoration(
-                      color: Colors.teal.withValues(alpha: 0.1),
-                     borderRadius: BorderRadius.circular(8),
-                   ),
-                   child: Icon(
-                     Icons.language,
-                     color: Colors.teal,
-                     size: 24,
-                   ),
-                 ),
-                 const SizedBox(width: 12),
-                 Expanded(
-                   child: Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     children: [
-                       const Text(
-                         'Web Scraping Demo',
-                         style: TextStyle(
-                           fontSize: 18,
-                           fontWeight: FontWeight.bold,
-                           color: Color(0xFF333333),
-                         ),
-                       ),
-                       Text(
-                         'Prueba el sistema de scraping de alimentos',
-                         style: TextStyle(
-                           fontSize: 14,
-                           color: Colors.grey.shade600,
-                         ),
-                       ),
-                     ],
-                   ),
-                 ),
-               ],
-             ),
-             const SizedBox(height: 16),
-             SizedBox(
-               width: double.infinity,
-               child: ElevatedButton.icon(
-                 onPressed: () => Navigator.pushNamed(context, '/food_scraping_demo'),
-                 icon: const Icon(Icons.explore),
-                 label: const Text('Explorar Demo'),
-                 style: ElevatedButton.styleFrom(
-                   backgroundColor: Colors.teal,
-                   foregroundColor: Colors.white,
-                   padding: const EdgeInsets.symmetric(vertical: 16),
-                   shape: RoundedRectangleBorder(
-                     borderRadius: BorderRadius.circular(12),
-                   ),
-                 ),
-               ),
-             ),
-           ],
-         ),
-       ),
-     );
-   }
-
-   Widget _buildTodoSection(BuildContext context) {
+    Widget _buildTodoSection(BuildContext context) {
     return Card(
       color: Colors.orange.shade50,
       child: Padding(

@@ -1,5 +1,6 @@
 import '../Config/app_logger.dart';
 import 'food_scraping_service.dart';
+import '../Model/food_nutrition_data.dart';
 
 /// Servicio de API que sincroniza datos de scraping con almacenamiento
 /// y proporciona endpoints para la app
