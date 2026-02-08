@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../Model/user.dart';
+import '../Model/workout.dart';
+import '../Control/workout_controller.dart';
 
 class WorkoutScreen extends StatelessWidget {
   final User user;
@@ -8,53 +11,67 @@ class WorkoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Entrenamiento'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 600;
+    return Consumer<WorkoutController>(
+      builder: (context, controller, child) {
+        final todayWorkout = controller.todayWorkout;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context),
-                const SizedBox(height: 24),
-                if (isWide)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 2, child: _buildWeeklySchedule(context)),
-                      const SizedBox(width: 24),
-                      Expanded(flex: 3, child: _buildTodayWorkout(context)),
-                    ],
-                  )
-                else
-                  Column(
-                    children: [
-                      _buildTodayWorkout(context),
-                      const SizedBox(height: 24),
-                      _buildWeeklySchedule(context),
-                    ],
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Log workout
-        },
-        icon: const Icon(Icons.play_arrow),
-        label: const Text('Iniciar Rutina'),
-        backgroundColor: Colors.blue,
-      ),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Entrenamiento'),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 24),
+                    if (isWide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: _buildWeeklySchedule(context, controller),
+                          ),
+                          const SizedBox(width: 24),
+                          Expanded(
+                            flex: 3,
+                            child: _buildTodayWorkout(
+                              context,
+                              controller,
+                              todayWorkout,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Column(
+                        children: [
+                          _buildTodayWorkout(context, controller, todayWorkout),
+                          const SizedBox(height: 24),
+                          _buildWeeklySchedule(context, controller),
+                        ],
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _logWorkout(context, controller),
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Registrar Rutina'),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      },
     );
   }
 
@@ -92,7 +109,20 @@ class WorkoutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTodayWorkout(BuildContext context) {
+  Widget _buildTodayWorkout(
+    BuildContext context,
+    WorkoutController controller,
+    Workout? workout,
+  ) {
+    if (workout == null) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: Text('No hay rutina asignada para hoy.')),
+        ),
+      );
+    }
+
     return Card(
       elevation: 4,
       child: Padding(
@@ -103,9 +133,12 @@ class WorkoutScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Rutina de Hoy: Full Body',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  'Rutina de Hoy: ${workout.name}',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 TextButton(
                   onPressed: () {
@@ -116,18 +149,15 @@ class WorkoutScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            ListView(
+            ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildExerciseItem('Sentadillas', '4 series x 12 reps'),
-                const Divider(),
-                _buildExerciseItem('Flexiones', '4 series x 15 reps'),
-                const Divider(),
-                _buildExerciseItem('Remo con Mancuerna', '3 series x 12 reps'),
-                const Divider(),
-                _buildExerciseItem('Plancha Abdominal', '3 series x 45 seg'),
-              ],
+              itemCount: workout.exercises.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final exercise = workout.exercises[index];
+                return _buildExerciseItem(exercise);
+              },
             ),
           ],
         ),
@@ -135,7 +165,7 @@ class WorkoutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildExerciseItem(String name, String details) {
+  Widget _buildExerciseItem(Exercise exercise) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -145,8 +175,11 @@ class WorkoutScreen extends StatelessWidget {
         ),
         child: const Icon(Icons.fitness_center, color: Colors.blue),
       ),
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(details),
+      title: Text(
+        exercise.name,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text(exercise.toString()),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         // Show exercise details
@@ -154,7 +187,10 @@ class WorkoutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWeeklySchedule(BuildContext context) {
+  Widget _buildWeeklySchedule(
+    BuildContext context,
+    WorkoutController controller,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -166,13 +202,15 @@ class WorkoutScreen extends StatelessWidget {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildDayRow('Lunes', 'Full Body', true),
-            _buildDayRow('Martes', 'Cardio + Abs', true),
-            _buildDayRow('Miércoles', 'Descanso', false),
-            _buildDayRow('Jueves', 'Tren Superior', false),
-            _buildDayRow('Viernes', 'Tren Inferior', false),
-            _buildDayRow('Sábado', 'Actividad Libre', false),
-            _buildDayRow('Domingo', 'Descanso', false),
+            ...controller.weeklySchedule.map((day) {
+              // Mock completion logic: assume day 1 & 2 are completed
+              final isCompleted = day.dayOfWeek <= 2;
+              return _buildDayRow(
+                controller.getDayName(day.dayOfWeek),
+                day.focus,
+                isCompleted,
+              );
+            }),
           ],
         ),
       ),
@@ -196,5 +234,17 @@ class WorkoutScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  void _logWorkout(BuildContext context, WorkoutController controller) {
+    if (controller.todayWorkout != null) {
+      controller.logWorkout(controller.todayWorkout!);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('¡Entrenamiento registrado! Buen trabajo.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 }

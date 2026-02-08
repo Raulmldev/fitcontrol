@@ -4,6 +4,8 @@ import '../Model/user.dart';
 
 import 'package:provider/provider.dart';
 import '../Control/nutrition_controller.dart';
+import '../Control/health_controller.dart';
+import '../Control/workout_controller.dart';
 
 /// Vista del Dashboard Principal de FitControl
 ///
@@ -30,6 +32,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<NutritionController>().setUser(widget.user);
+        context.read<HealthController>().setUser(widget.user);
+        context.read<WorkoutController>().setUser(widget.user);
       }
     });
   }

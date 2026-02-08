@@ -9,12 +9,18 @@ import 'View/health_screen.dart';
 import 'View/conclusion_screen.dart';
 import 'package:provider/provider.dart';
 import 'Control/nutrition_controller.dart';
+import 'Control/health_controller.dart';
+import 'Control/workout_controller.dart';
 import 'Model/user.dart';
 
 void main() {
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => NutritionController())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => NutritionController()),
+        ChangeNotifierProvider(create: (_) => HealthController()),
+        ChangeNotifierProvider(create: (_) => WorkoutController()),
+      ],
       child: const MyApp(),
     ),
   );
