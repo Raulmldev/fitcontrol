@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import '../Control/ai_expert_team.dart';
 import '../Model/user.dart';
 
+import 'package:provider/provider.dart';
+import '../Control/nutrition_controller.dart';
+
 /// Vista del Dashboard Principal de FitControl
 ///
 /// Muestra un resumen de todos los módulos y acceso rápido a funciones
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final User user;
   final VoidCallback onLogout;
 
@@ -14,6 +17,22 @@ class DashboardScreen extends StatelessWidget {
     required this.user,
     required this.onLogout,
   });
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Inicializar el controlador de nutrición con el usuario actual
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<NutritionController>().setUser(widget.user);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +44,7 @@ class DashboardScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: onLogout,
+            onPressed: widget.onLogout,
             tooltip: 'Cerrar sesión',
           ),
         ],
@@ -102,7 +121,7 @@ class DashboardScreen extends StatelessWidget {
             () => Navigator.pushNamed(
               context,
               '/ai_chat',
-              arguments: {'user': user},
+              arguments: {'user': widget.user},
             ),
         icon: const Icon(Icons.chat),
         label: const Text('Hablar con IA'),
@@ -122,7 +141,7 @@ class DashboardScreen extends StatelessWidget {
               radius: 30,
               backgroundColor: Colors.deepPurple,
               child: Text(
-                user.name.substring(0, 1).toUpperCase(),
+                widget.user.name.substring(0, 1).toUpperCase(),
                 style: const TextStyle(
                   fontSize: 24,
                   color: Colors.white,
@@ -136,7 +155,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '¡Hola, ${user.name.split(' ')[0]}!',
+                    '¡Hola, ${widget.user.name.split(' ')[0]}!',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -278,7 +297,7 @@ class DashboardScreen extends StatelessWidget {
                   () => Navigator.pushNamed(
                     context,
                     '/nutrition',
-                    arguments: {'user': user},
+                    arguments: {'user': widget.user},
                   ),
             ),
             _buildModuleCard(
@@ -291,7 +310,7 @@ class DashboardScreen extends StatelessWidget {
                   () => Navigator.pushNamed(
                     context,
                     '/workout',
-                    arguments: {'user': user},
+                    arguments: {'user': widget.user},
                   ),
             ),
             _buildModuleCard(
@@ -304,7 +323,7 @@ class DashboardScreen extends StatelessWidget {
                   () => Navigator.pushNamed(
                     context,
                     '/health',
-                    arguments: {'user': user},
+                    arguments: {'user': widget.user},
                   ),
             ),
             _buildModuleCard(
@@ -376,7 +395,7 @@ class DashboardScreen extends StatelessWidget {
             () => Navigator.pushNamed(
               context,
               '/conclusion',
-              arguments: {'user': user},
+              arguments: {'user': widget.user},
             ),
         icon: const Icon(Icons.assessment),
         label: const Text('VER CONCLUSIÓN Y REPORTE INTEGRAL'),

@@ -7,10 +7,17 @@ import 'View/nutrition_screen.dart';
 import 'View/workout_screen.dart';
 import 'View/health_screen.dart';
 import 'View/conclusion_screen.dart';
+import 'package:provider/provider.dart';
+import 'Control/nutrition_controller.dart';
 import 'Model/user.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => NutritionController())],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

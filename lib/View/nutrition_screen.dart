@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../Control/nutrition_controller.dart';
 import '../Model/user.dart';
+import '../Model/meal.dart';
 
 class NutritionScreen extends StatelessWidget {
   final User user;
@@ -11,38 +14,47 @@ class NutritionScreen extends StatelessWidget {
     // Responsive layout helper
     final isWide = MediaQuery.of(context).size.width > 600;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrición'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 24),
-            if (isWide)
-              _buildWideLayout(context)
-            else
-              _buildMobileLayout(context),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO: Implement meal logging
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Registrar Comida'),
-        backgroundColor: Colors.green,
-      ),
+    return Consumer<NutritionController>(
+      builder: (context, controller, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Nutrición'),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => controller.loadMockData(),
+                tooltip: 'Cargar Datos de Prueba',
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(context, controller),
+                const SizedBox(height: 24),
+                if (isWide)
+                  _buildWideLayout(context, controller)
+                else
+                  _buildMobileLayout(context, controller),
+              ],
+            ),
+          ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showAddMealDialog(context, controller),
+            icon: const Icon(Icons.add),
+            label: const Text('Registrar Comida'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, NutritionController controller) {
     return Card(
       color: Colors.green.shade50,
       child: Padding(
@@ -76,28 +88,42 @@ class NutritionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildWideLayout(BuildContext context) {
+  Widget _buildWideLayout(
+    BuildContext context,
+    NutritionController controller,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildDailyProgress(context)),
+        Expanded(child: _buildDailyProgress(context, controller)),
         const SizedBox(width: 24),
-        Expanded(child: _buildMealList(context)),
+        Expanded(child: _buildMealList(context, controller)),
       ],
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context) {
+  Widget _buildMobileLayout(
+    BuildContext context,
+    NutritionController controller,
+  ) {
     return Column(
       children: [
-        _buildDailyProgress(context),
+        _buildDailyProgress(context, controller),
         const SizedBox(height: 24),
-        _buildMealList(context),
+        _buildMealList(context, controller),
       ],
     );
   }
 
-  Widget _buildDailyProgress(BuildContext context) {
+  Widget _buildDailyProgress(
+    BuildContext context,
+    NutritionController controller,
+  ) {
+    final daily = controller.dailyNutrition;
+    final targetCalories =
+        daily?.targetCalories ?? user.targetCalories.toDouble();
+    final consumedCalories = controller.totalCalories;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -111,16 +137,31 @@ class NutritionScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildMacroBar(
               'Calorías',
-              1200.0,
-              user.targetCalories.toDouble(),
+              consumedCalories,
+              targetCalories,
               Colors.green,
             ),
             const SizedBox(height: 12),
-            _buildMacroBar('Proteínas', 80.0, 150.0, Colors.blue),
+            _buildMacroBar(
+              'Proteínas',
+              controller.totalProtein,
+              daily?.targetProtein ?? 150,
+              Colors.blue,
+            ),
             const SizedBox(height: 12),
-            _buildMacroBar('Carbohidratos', 150.0, 200.0, Colors.orange),
+            _buildMacroBar(
+              'Carbohidratos',
+              controller.totalCarbs,
+              daily?.targetCarbs ?? 200,
+              Colors.orange,
+            ),
             const SizedBox(height: 12),
-            _buildMacroBar('Grasas', 40.0, 70.0, Colors.red),
+            _buildMacroBar(
+              'Grasas',
+              controller.totalFat,
+              daily?.targetFat ?? 70,
+              Colors.red,
+            ),
           ],
         ),
       ),
@@ -145,7 +186,7 @@ class NutritionScreen extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         LinearProgressIndicator(
-          value: (current / target).clamp(0.0, 1.0),
+          value: target > 0 ? (current / target).clamp(0.0, 1.0) : 0,
           backgroundColor: color.withValues(alpha: 0.2),
           valueColor: AlwaysStoppedAnimation(color),
           minHeight: 10,
@@ -155,7 +196,7 @@ class NutritionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMealList(BuildContext context) {
+  Widget _buildMealList(BuildContext context, NutritionController controller) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -169,43 +210,154 @@ class NutritionScreen extends StatelessWidget {
                   'Comidas de Hoy',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to chat with Nutritionist context
-                  },
-                  child: const Text('Consultar a Nutricionista'),
-                ),
+                if (controller.todayMeals.isNotEmpty)
+                  TextButton(
+                    onPressed: () {
+                      // Future expanion: View Details
+                    },
+                    child: Text(
+                      '${controller.totalCalories.toInt()} kcal total',
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
-            _buildMealItem('Desayuno', 'Avena con frutas y nueces', 450),
-            const Divider(),
-            _buildMealItem('Almuerzo', 'Pechuga de pollo con ensalada', 650),
-            const Divider(),
-            _buildMealItem('Merienda', 'Yogurt griego', 150),
-            const Divider(),
-            _buildMealItem('Cena', 'Pendiente', 0, isPending: true),
+            if (controller.todayMeals.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text('No hay comidas registradas hoy.')),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: controller.todayMeals.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final meal = controller.todayMeals[index];
+                  return _buildMealItem(meal, controller);
+                },
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMealItem(
-    String title,
-    String description,
-    int calories, {
-    bool isPending = false,
-  }) {
+  Widget _buildMealItem(Meal meal, NutritionController controller) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        isPending ? Icons.radio_button_unchecked : Icons.check_circle,
-        color: isPending ? Colors.grey : Colors.green,
+      leading: const Icon(Icons.check_circle, color: Colors.green),
+      title: Text(
+        meal.name,
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-      subtitle: Text(description),
-      trailing: Text('$calories kcal'),
+      subtitle: Text('${meal.foods.length} alimentos'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${meal.totalCalories.toInt()} kcal'),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.grey, size: 20),
+            onPressed: () => controller.deleteMeal(meal.id),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddMealDialog(
+    BuildContext context,
+    NutritionController controller,
+  ) {
+    final nameController = TextEditingController();
+    final caloriesController = TextEditingController();
+    String selectedType = 'breakfast';
+
+    // Default food item needed for the meal model
+    // For simplicity, we just ask for total calories and create a dummy food item
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Registrar Comida'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Nombre (ej. Almuerzo)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                initialValue: selectedType,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'breakfast', child: Text('Desayuno')),
+                  DropdownMenuItem(value: 'lunch', child: Text('Almuerzo')),
+                  DropdownMenuItem(value: 'dinner', child: Text('Cena')),
+                  DropdownMenuItem(value: 'snack', child: Text('Merienda')),
+                ],
+                onChanged: (value) => selectedType = value!,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: caloriesController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Calorías Totales',
+                  border: OutlineInputBorder(),
+                  suffixText: 'kcal',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.isNotEmpty &&
+                    caloriesController.text.isNotEmpty) {
+                  final calories =
+                      double.tryParse(caloriesController.text) ?? 0;
+
+                  final newMeal = Meal(
+                    userId: user.id,
+                    name: nameController.text,
+                    mealType: selectedType,
+                    date: DateTime.now(),
+                    foods: [
+                      FoodItem(
+                        name: 'Entrada manual',
+                        quantity: 1,
+                        unit: 'porcion',
+                        calories: calories,
+                        protein: 0, // In a real app we would ask for these too
+                        carbs: 0,
+                        fat: 0,
+                      ),
+                    ],
+                  )..calculateTotals();
+
+                  controller.addMeal(newMeal);
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
