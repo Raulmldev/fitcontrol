@@ -39,7 +39,7 @@ class NutritionAgent extends AIAgentBase {
         ],
       );
 
-  // Se elimina el override de processQuery para usar la implementación base con DeepSeek
+  // Se elimina el override de processQuery para usar la implementación base con Groq
 
   @override
   Future<List<AIAgentMessage>> generateRecommendations(

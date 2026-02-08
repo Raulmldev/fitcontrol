@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../Control/nutrition_controller.dart';
 import '../Model/user.dart';
 import '../Model/meal.dart';
+import '../Control/food_search_service.dart';
 
 class NutritionScreen extends StatelessWidget {
   final User user;
@@ -274,50 +275,70 @@ class NutritionScreen extends StatelessWidget {
     final caloriesController = TextEditingController();
     String selectedType = 'breakfast';
 
-    // Default food item needed for the meal model
-    // For simplicity, we just ask for total calories and create a dummy food item
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Registrar Comida'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombre (ej. Almuerzo)',
-                  border: OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre (ej. Almuerzo)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      tooltip: 'Buscar alimento (Web Scraping)',
+                      onPressed: () async {
+                        final result = await _showFoodSearchDialog(context);
+                        if (result != null) {
+                          nameController.text = result.name;
+                          caloriesController.text =
+                              result.calories.toInt().toString();
+                        }
+                      },
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: selectedType,
-                decoration: const InputDecoration(
-                  labelText: 'Tipo',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedType,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'breakfast',
+                      child: Text('Desayuno'),
+                    ),
+                    DropdownMenuItem(value: 'lunch', child: Text('Almuerzo')),
+                    DropdownMenuItem(value: 'dinner', child: Text('Cena')),
+                    DropdownMenuItem(value: 'snack', child: Text('Merienda')),
+                  ],
+                  onChanged: (value) => selectedType = value!,
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'breakfast', child: Text('Desayuno')),
-                  DropdownMenuItem(value: 'lunch', child: Text('Almuerzo')),
-                  DropdownMenuItem(value: 'dinner', child: Text('Cena')),
-                  DropdownMenuItem(value: 'snack', child: Text('Merienda')),
-                ],
-                onChanged: (value) => selectedType = value!,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: caloriesController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Calorías Totales',
-                  border: OutlineInputBorder(),
-                  suffixText: 'kcal',
+                const SizedBox(height: 16),
+                TextField(
+                  controller: caloriesController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Calorías Totales',
+                    border: OutlineInputBorder(),
+                    suffixText: 'kcal',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -338,11 +359,11 @@ class NutritionScreen extends StatelessWidget {
                     date: DateTime.now(),
                     foods: [
                       FoodItem(
-                        name: 'Entrada manual',
+                        name: nameController.text,
                         quantity: 1,
                         unit: 'porcion',
                         calories: calories,
-                        protein: 0, // In a real app we would ask for these too
+                        protein: 0,
                         carbs: 0,
                         fat: 0,
                       ),
@@ -356,6 +377,83 @@ class NutritionScreen extends StatelessWidget {
               child: const Text('Guardar'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  Future<FoodItem?> _showFoodSearchDialog(BuildContext context) async {
+    final searchController = TextEditingController();
+    final foodService = FoodSearchService();
+    List<FoodItem> searchResults = [];
+
+    return showDialog<FoodItem>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Buscar Alimento (Web)'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: searchController,
+                            decoration: const InputDecoration(
+                              labelText: 'Buscar (ej. Banana)',
+                              hintText: 'Simulando scraping...',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          onPressed: () async {
+                            final results = await foodService.searchFood(
+                              searchController.text,
+                            );
+                            setState(() {
+                              searchResults = results;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (searchResults.isNotEmpty)
+                      SizedBox(
+                        height: 200,
+                        width: double.maxFinite,
+                        child: ListView.separated(
+                          itemCount: searchResults.length,
+                          separatorBuilder: (context, i) => const Divider(),
+                          itemBuilder: (context, i) {
+                            final item = searchResults[i];
+                            return ListTile(
+                              title: Text(item.name),
+                              subtitle: Text(
+                                '${item.calories.toInt()} kcal / ${item.quantity} ${item.unit}',
+                              ),
+                              onTap: () => Navigator.pop(context, item),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
