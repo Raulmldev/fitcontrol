@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../Control/ai_coordinator.dart';
+import '../Model/ai_message.dart';
 import '../Model/user.dart';
 
 /// Pantalla de recomendaciones personalizadas y dinámicas
@@ -20,6 +22,10 @@ class _RecommendationsScreenState extends State<RecommendationsScreen>
   late AnimationController _slideController;
   late Animation<double> _pulseAnimation;
   late Animation<Offset> _slideAnimation;
+
+  final AIAgentCoordinator _coordinator = AIAgentCoordinator();
+  List<AIAgentMessage> _aiRecommendations = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -51,6 +57,31 @@ class _RecommendationsScreenState extends State<RecommendationsScreen>
     ));
     
     _slideController.forward();
+    _loadAIRecommendations();
+  }
+
+  Future<void> _loadAIRecommendations() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await _coordinator.initialize(user: widget.user);
+      final recommendations = await _coordinator.generateAllRecommendations(perAgent: 2);
+      if (mounted) {
+        setState(() {
+          _aiRecommendations = recommendations;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error cargando recomendaciones: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -98,14 +129,29 @@ class _RecommendationsScreenState extends State<RecommendationsScreen>
                 position: _slideAnimation,
                 child: _buildMainRecommendation(),
               ),
-              
+
               const SizedBox(height: 24),
-              
-              // Recomendaciones por categorías
-              ...recommendations.map((category) => Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: _buildCategoryRecommendations(category),
-              )),
+
+              // Sección de Recomendaciones de Expertos IA
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_aiRecommendations.isNotEmpty)
+                _buildAIRecommendationsSection(),
+
+              const SizedBox(height: 24),
+
+              // Recomendaciones por categorías (Estáticas/Fallback)
+              ...recommendations.map(
+                (category) => Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _buildCategoryRecommendations(category),
+                ),
+              ),
               
               const SizedBox(height: 32),
             ],
@@ -116,8 +162,7 @@ class _RecommendationsScreenState extends State<RecommendationsScreen>
   }
 
   Future<void> _refreshRecommendations() async {
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() {});
+    await _loadAIRecommendations();
   }
 
   Widget _buildMainRecommendation() {
@@ -382,6 +427,111 @@ class _RecommendationsScreenState extends State<RecommendationsScreen>
         ),
       ),
     );
+  }
+
+  Widget _buildAIRecommendationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.deepPurple),
+            SizedBox(width: 8),
+            Text(
+              'Insights de tus Expertos IA',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _aiRecommendations.length,
+            itemBuilder: (context, index) {
+              final rec = _aiRecommendations[index];
+              return _buildAIRecCard(rec);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAIRecCard(AIAgentMessage message) {
+    final color = _getAgentColor(message.agentId);
+    return Container(
+      width: 280,
+      margin: const EdgeInsets.only(right: 16, bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(_getAgentIcon(message.agentId), color: color, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  message.agentName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Text(
+                message.content,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (message.suggestions != null && message.suggestions!.isNotEmpty)
+              Text(
+                message.suggestions!.first,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getAgentIcon(String agentId) {
+    if (agentId.contains('nutrition')) return Icons.restaurant;
+    if (agentId.contains('trainer')) return Icons.fitness_center;
+    if (agentId.contains('health')) return Icons.favorite;
+    return Icons.smart_toy;
+  }
+
+  Color _getAgentColor(String agentId) {
+    if (agentId.contains('nutrition')) return Colors.green;
+    if (agentId.contains('trainer')) return Colors.blue;
+    if (agentId.contains('health')) return Colors.red;
+    return Colors.deepPurple;
   }
 
   void _onRecommendationTap(RecommendationItem item) {

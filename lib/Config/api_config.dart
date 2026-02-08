@@ -1,7 +1,10 @@
 class ApiConfig {
   // API de DeepSeek (para chat/texto)
   // Obtén tu API key en: https://platform.deepseek.com/
-  static const String deepSeekApiKey = 'sk-a92ce461686a4f51906478359066d332';
+  static const String deepSeekApiKey = String.fromEnvironment(
+    'DEEPSEEK_API_KEY',
+    defaultValue: 'sk-a92ce461686a4f51906478359066d332',
+  );
   static const String deepSeekBaseUrl = 'https://api.deepseek.com';
   
   // API de Google Gemini (para visión de imágenes - reconocimiento de comida)

@@ -250,59 +250,49 @@ $response
   AIAgentBase? _selectAgentForContext(QueryContext context, String query) {
     final queryLower = query.toLowerCase();
 
-    // Palabras clave para cada agente
+    // Palabras clave ampliadas para cada agente
     final nutritionKeywords = [
-      'comida',
-      'dieta',
-      'nutrición',
-      'calorías',
-      'proteína',
-      'carbohidrato',
-      'grasa',
-      'compra',
-      'lista',
-      'alimento',
+      'comida', 'dieta', 'nutrición', 'calorías', 'proteína', 'carbohidrato',
+      'grasa', 'compra', 'lista', 'alimento', 'receta', 'desayuno', 'almuerzo',
+      'cena', 'snack', 'merienda', 'hambre', 'comer', 'beber', 'agua', 'ayuno',
+      'suplemento', 'vitaminas', 'fruta', 'verdura', 'carne', 'pescado', 'macros'
     ];
 
     final workoutKeywords = [
-      'ejercicio',
-      'entrenamiento',
-      'rutina',
-      'gym',
-      'gimnasio',
-      'pesas',
-      'cardio',
-      'músculo',
-      'fuerza',
+      'ejercicio', 'entrenamiento', 'rutina', 'gym', 'gimnasio', 'pesas',
+      'cardio', 'músculo', 'fuerza', 'hipertrofia', 'serie', 'repetición',
+      'descanso', 'pierna', 'brazo', 'espalda', 'pecho', 'hombro', 'abdomen',
+      'flexibilidad', 'estiramiento', 'yoga', 'hiit', 'correr', 'nadar', 'bici'
     ];
 
     final healthKeywords = [
-      'salud',
-      'presión',
-      'ritmo',
-      'peso',
-      'grasa',
-      'sueño',
-      'estrés',
-      'energía',
-      'vital',
+      'salud', 'presión', 'ritmo', 'peso', 'grasa', 'sueño', 'estrés',
+      'energía', 'vital', 'médico', 'doctor', 'corazón', 'pulso', 'tensión',
+      'dolor', 'lesión', 'cansancio', 'fatiga', 'ánimo', 'psicología', 'hábito',
+      'sangre', 'glucosa', 'colesterol', 'respiración', 'bienestar'
     ];
 
-    // Contar coincidencias
+    // Contar coincidencias con pesos
     int nutritionScore = 0;
     int workoutScore = 0;
     int healthScore = 0;
 
     for (final keyword in nutritionKeywords) {
-      if (queryLower.contains(keyword)) nutritionScore++;
+      if (queryLower.contains(keyword)) {
+        nutritionScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     for (final keyword in workoutKeywords) {
-      if (queryLower.contains(keyword)) workoutScore++;
+      if (queryLower.contains(keyword)) {
+        workoutScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     for (final keyword in healthKeywords) {
-      if (queryLower.contains(keyword)) healthScore++;
+      if (queryLower.contains(keyword)) {
+        healthScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     // Decidir según puntuación o contexto explícito

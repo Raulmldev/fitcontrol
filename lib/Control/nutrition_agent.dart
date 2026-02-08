@@ -9,7 +9,7 @@ import 'ai_agent_base.dart';
 class NutritionAgent extends AIAgentBase {
   NutritionAgent()
       : super(
-          id: 'nutrition_expert',
+          id: 'nutrition_expert_001',
           name: 'Dra. Elena Martínez',
           type: 'nutrition',
           description:
