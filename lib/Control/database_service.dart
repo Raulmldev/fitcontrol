@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
 import '../Model/meal.dart';
+import '../Model/health_metrics.dart';
 
 /// Servicio de Base de Datos para persistencia local de datos de FitControl
 /// 
@@ -77,6 +78,27 @@ class DatabaseService {
       )
     ''');
 
+    // Tabla de métricas de salud (health_metrics)
+    await db.execute('''
+      CREATE TABLE health_metrics (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        date TEXT NOT NULL,
+        weight REAL,
+        heart_rate REAL,
+        blood_pressure_systolic REAL,
+        blood_pressure_diastolic REAL,
+        body_fat REAL,
+        sleep_hours REAL,
+        sleep_quality INTEGER,
+        stress_level INTEGER,
+        energy_level INTEGER,
+        mood INTEGER,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
     // Índices para consultas eficientes
     await db.execute('''
       CREATE INDEX idx_meals_user_date ON meals(user_id, date)
@@ -84,6 +106,10 @@ class DatabaseService {
     
     await db.execute('''
       CREATE INDEX idx_food_items_meal ON food_items(meal_id)
+    ''');
+
+    await db.execute('''
+      CREATE INDEX idx_health_metrics_user_date ON health_metrics(user_id, date)
     ''');
   }
 
@@ -300,11 +326,51 @@ class DatabaseService {
     }
   }
 
+  /// Guarda métricas de salud
+  Future<void> saveHealthMetrics(HealthMetrics metrics) async {
+    final db = await database;
+    await db.insert(
+      'health_metrics',
+      _healthMetricsToMap(metrics),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  /// Obtiene las últimas métricas de salud de un usuario
+  Future<HealthMetrics?> getLatestHealthMetrics(String userId) async {
+    final db = await database;
+    final maps = await db.query(
+      'health_metrics',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'date DESC',
+      limit: 1,
+    );
+
+    if (maps.isEmpty) return null;
+    return _mapToHealthMetrics(maps.first);
+  }
+
+  /// Obtiene historial de métricas de salud
+  Future<List<HealthMetrics>> getHealthHistory(String userId, {int limit = 30}) async {
+    final db = await database;
+    final maps = await db.query(
+      'health_metrics',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'date DESC',
+      limit: limit,
+    );
+
+    return maps.map((map) => _mapToHealthMetrics(map)).toList();
+  }
+
   /// Elimina todos los datos (útil para testing)
   Future<void> clearAllData() async {
     final db = await database;
     await db.delete('food_items');
     await db.delete('meals');
+    await db.delete('health_metrics');
   }
 
   // Métodos auxiliares de conversión
@@ -391,6 +457,45 @@ class DatabaseService {
       int.parse(parts[0]),
       int.parse(parts[1]),
       int.parse(parts[2]),
+    );
+  }
+
+  Map<String, dynamic> _healthMetricsToMap(HealthMetrics metrics) {
+    return {
+      'id': metrics.id,
+      'user_id': metrics.userId,
+      'date': metrics.date.toIso8601String(),
+      'weight': metrics.weight,
+      'heart_rate': metrics.heartRate,
+      'blood_pressure_systolic': metrics.bloodPressureSystolic,
+      'blood_pressure_diastolic': metrics.bloodPressureDiastolic,
+      'body_fat': metrics.bodyFat,
+      'sleep_hours': metrics.sleepHours,
+      'sleep_quality': metrics.sleepQuality,
+      'stress_level': metrics.stressLevel,
+      'energy_level': metrics.energyLevel,
+      'mood': metrics.mood,
+      'notes': metrics.notes,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  HealthMetrics _mapToHealthMetrics(Map<String, dynamic> map) {
+    return HealthMetrics(
+      id: map['id'] as String,
+      userId: map['user_id'] as String,
+      date: DateTime.parse(map['date'] as String),
+      weight: (map['weight'] as num?)?.toDouble() ?? 0.0,
+      heartRate: (map['heart_rate'] as num?)?.toDouble(),
+      bloodPressureSystolic: (map['blood_pressure_systolic'] as num?)?.toDouble(),
+      bloodPressureDiastolic: (map['blood_pressure_diastolic'] as num?)?.toDouble(),
+      bodyFat: (map['body_fat'] as num?)?.toDouble(),
+      sleepHours: map['sleep_hours'] as int?,
+      sleepQuality: map['sleep_quality'] as int?,
+      stressLevel: map['stress_level'] as int?,
+      energyLevel: map['energy_level'] as int?,
+      mood: map['mood'] as int?,
+      notes: map['notes'] as String?,
     );
   }
 }

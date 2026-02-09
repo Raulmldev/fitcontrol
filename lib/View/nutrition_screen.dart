@@ -185,89 +185,102 @@ class _NutritionScreenState extends State<NutritionScreen> {
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.search,
                   color: Colors.green,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Buscar Alimento con IA',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                const Expanded(
+                  child: Text(
+                    'Buscar Alimento con IA',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
               ],
             ),
             const SizedBox(height: 16),
             
             // Campo de búsqueda
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Ej: pollo, arroz, manzana...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      prefixIcon: const Icon(Icons.restaurant),
-                      suffixIcon: _isLoading 
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _selectedFood = null;
-                                });
-                              },
-                            ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onSubmitted: (value) => _searchFood(value),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _isLoading 
-                      ? null 
-                      : () => _searchFood(_searchController.text),
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = constraints.maxWidth < 400;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Ej: pollo, arroz...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
-                        )
-                      : const Icon(Icons.search),
-                  label: const Text('Buscar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                          prefixIcon: isSmall ? null : const Icon(Icons.restaurant),
+                          suffixIcon: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _selectedFood = null;
+                                    });
+                                  },
+                                ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (value) => _searchFood(value),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _searchFood(_searchController.text),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmall ? 12 : 20,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : (isSmall ? const Icon(Icons.search) : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.search),
+                                SizedBox(width: 4),
+                                Text('Buscar'),
+                              ],
+                            )),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              }
             ),
             
             // Historial de búsquedas
@@ -760,8 +773,18 @@ class _NutritionScreenState extends State<NutritionScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text('${current.toInt()} / ${target.toInt()} g/kcal'),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${current.toInt()} / ${target.toInt()} g/kcal',
+              style: const TextStyle(fontSize: 12),
+            ),
           ],
         ),
         const SizedBox(height: 6),
