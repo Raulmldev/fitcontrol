@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fitcontrol/Control/ai_service.dart';
 import 'package:fitcontrol/Config/api_config.dart';
