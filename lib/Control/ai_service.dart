@@ -8,17 +8,17 @@ class AIService {
 
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: ApiConfig.groqBaseUrl,
+      baseUrl: ApiConfig.nvidiaBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${ApiConfig.groqApiKey}',
+        'Authorization': 'Bearer ${ApiConfig.nvidiaApiKey}',
       },
     ),
   );
 
-  /// Sends a chat message to the Groq API (using Llama 3)
+  /// Sends a chat message to the NVIDIA NIM API (using Kimi K2.5)
   /// [systemPrompt] - The persona/instructions for the agent
   /// [userMessage] - The current query from the user
   /// [history] - (Optional) Previous messages for context
@@ -43,11 +43,7 @@ class AIService {
 
       final response = await _dio.post(
         '/chat/completions',
-        data: {
-          'model': 'llama-3.3-70b-versatile',
-          'messages': messages,
-          'stream': false,
-        },
+        data: {'model': ApiConfig.model, 'messages': messages, 'stream': false},
       );
 
       if (response.statusCode == 200) {

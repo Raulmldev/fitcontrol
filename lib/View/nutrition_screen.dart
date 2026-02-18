@@ -383,79 +383,122 @@ class NutritionScreen extends StatelessWidget {
   }
 
   Future<FoodItem?> _showFoodSearchDialog(BuildContext context) async {
-    final searchController = TextEditingController();
-    final foodService = FoodSearchService();
-    List<FoodItem> searchResults = [];
-
     return showDialog<FoodItem>(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Buscar Alimento (Web)'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: searchController,
-                            decoration: const InputDecoration(
-                              labelText: 'Buscar (ej. Banana)',
-                              hintText: 'Simulando scraping...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.search),
-                          onPressed: () async {
-                            final results = await foodService.searchFood(
-                              searchController.text,
-                            );
-                            setState(() {
-                              searchResults = results;
-                            });
-                          },
-                        ),
-                      ],
+      builder: (context) => const _SearchFoodDialog(),
+    );
+  }
+}
+
+class _SearchFoodDialog extends StatefulWidget {
+  const _SearchFoodDialog();
+
+  @override
+  State<_SearchFoodDialog> createState() => _SearchFoodDialogState();
+}
+
+class _SearchFoodDialogState extends State<_SearchFoodDialog> {
+  final _searchController = TextEditingController();
+  final _foodService = FoodSearchService();
+  List<FoodItem> _searchResults = [];
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _performSearch() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final results = await _foodService.searchFood(_searchController.text);
+
+      if (!mounted) return;
+
+      setState(() {
+        _searchResults = results;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Buscar Alimento (Web)'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Buscar (ej. Banana)',
+                      hintText: 'Simulando scraping...',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 16),
-                    if (searchResults.isNotEmpty)
-                      SizedBox(
-                        height: 200,
-                        width: double.maxFinite,
-                        child: ListView.separated(
-                          itemCount: searchResults.length,
-                          separatorBuilder: (context, i) => const Divider(),
-                          itemBuilder: (context, i) {
-                            final item = searchResults[i];
-                            return ListTile(
-                              title: Text(item.name),
-                              subtitle: Text(
-                                '${item.calories.toInt()} kcal / ${item.quantity} ${item.unit}',
-                              ),
-                              onTap: () => Navigator.pop(context, item),
-                            );
-                          },
-                        ),
-                      ),
-                  ],
+                    onSubmitted: (_) => _performSearch(),
+                  ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
+                IconButton(
+                  icon:
+                      _isLoading
+                          ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.search),
+                  onPressed: _isLoading ? null : _performSearch,
                 ),
               ],
-            );
-          },
-        );
-      },
+            ),
+            const SizedBox(height: 16),
+            if (_searchResults.isNotEmpty)
+              SizedBox(
+                height: 200,
+                width: double.maxFinite,
+                child: ListView.separated(
+                  itemCount: _searchResults.length,
+                  separatorBuilder: (context, i) => const Divider(),
+                  itemBuilder: (context, i) {
+                    final item = _searchResults[i];
+                    return ListTile(
+                      title: Text(item.name),
+                      subtitle: Text(
+                        '${item.calories.toInt()} kcal / ${item.quantity} ${item.unit}',
+                      ),
+                      onTap: () => Navigator.pop(context, item),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+      ],
     );
   }
 }

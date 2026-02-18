@@ -33,11 +33,13 @@ class AIAgentCoordinator {
   final Queue<AgentCoordinationRequest> _coordinationQueue = Queue();
 
   // Stream controller para eventos del sistema
-  final _systemEventController = StreamController<CoordinatorEvent>.broadcast();
+  StreamController<CoordinatorEvent> _systemEventController =
+      StreamController<CoordinatorEvent>.broadcast();
   Stream<CoordinatorEvent> get systemEvents => _systemEventController.stream;
 
   // Stream consolidado de todos los mensajes
-  final _allMessagesController = StreamController<AIAgentMessage>.broadcast();
+  StreamController<AIAgentMessage> _allMessagesController =
+      StreamController<AIAgentMessage>.broadcast();
   Stream<AIAgentMessage> get allMessages => _allMessagesController.stream;
 
   // Historial de conversaciones
@@ -56,6 +58,14 @@ class AIAgentCoordinator {
     if (_isInitialized) return;
 
     _currentUser = user;
+
+    // Recrear StreamControllers si fueron cerrados
+    if (_systemEventController.isClosed) {
+      _systemEventController = StreamController<CoordinatorEvent>.broadcast();
+    }
+    if (_allMessagesController.isClosed) {
+      _allMessagesController = StreamController<AIAgentMessage>.broadcast();
+    }
 
     // Crear agentes principales
     nutritionAgent = NutritionAgent();
@@ -505,8 +515,13 @@ Todos los agentes han coordinado sus respuestas para darte la mejor orientación
     for (final agent in _agents.values) {
       agent.dispose();
     }
+    _agents.clear();
     _systemEventController.close();
     _allMessagesController.close();
+    _conversations.clear();
+    _currentConversation = null;
+    _currentUser = null;
+    _isInitialized = false;
   }
 }
 

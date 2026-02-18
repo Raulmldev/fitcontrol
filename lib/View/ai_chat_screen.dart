@@ -433,7 +433,8 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _coordinator.dispose();
+    // No se llama _coordinator.dispose() porque es un singleton
+    // que debe persistir entre navegaciones
     super.dispose();
   }
 }

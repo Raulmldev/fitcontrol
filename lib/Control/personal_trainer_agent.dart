@@ -37,7 +37,7 @@ class PersonalTrainerAgent extends AIAgentBase {
         ],
       );
 
-  // Se elimina el override de processQuery para usar la implementación base con Groq
+  // Se elimina el override de processQuery para usar la implementación base con NVIDIA NIM
 
   @override
   Future<List<AIAgentMessage>> generateRecommendations(

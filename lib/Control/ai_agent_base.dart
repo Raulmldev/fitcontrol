@@ -34,7 +34,7 @@ abstract class AIAgentBase {
     required this.capabilities,
   });
 
-  /// Procesa una consulta del usuario y genera una respuesta usando Groq (Llama 3)
+  /// Procesa una consulta del usuario y genera una respuesta usando NVIDIA NIM (Kimi K2.5)
   Future<AIAgentMessage> processQuery(
     UserQuery query,
     User user, {
@@ -66,7 +66,7 @@ abstract class AIAgentBase {
       history: apiHistory,
     );
 
-    // Se elimina el override de processQuery para usar la implementación base con Groq (Llama 3)
+    // Se elimina el override de processQuery para usar la implementación base con NVIDIA NIM (Kimi K2.5)
     // Crear mensaje de respuesta
     final message = createMessage(
       content: responseContent,
