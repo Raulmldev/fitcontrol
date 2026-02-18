@@ -42,9 +42,9 @@ class AIAgentCoordinator {
       StreamController<AIAgentMessage>.broadcast();
   Stream<AIAgentMessage> get allMessages => _allMessagesController.stream;
 
-  // Historial de conversaciones
-  final List<AIConversation> _conversations = [];
-  AIConversation? _currentConversation;
+  // Historial de conversaciones (Mapa por contexto/agente)
+  final Map<String, AIConversation> _conversations = {};
+  // AIConversation? _currentConversation; // Removed legacy field
 
   // Usuario actual
   User? _currentUser;
@@ -55,9 +55,13 @@ class AIAgentCoordinator {
 
   /// Inicializa el sistema de agentes
   Future<void> initialize({User? user}) async {
+    if (user != null) {
+      _currentUser = user;
+    }
+
     if (_isInitialized) return;
 
-    _currentUser = user;
+    // _currentUser assignment handled above now
 
     // Recrear StreamControllers si fueron cerrados
     if (_systemEventController.isClosed) {
@@ -76,6 +80,9 @@ class AIAgentCoordinator {
     _registerAgent(nutritionAgent);
     _registerAgent(trainerAgent);
     _registerAgent(healthAgent);
+
+    // Reiniciar estado de conversación para asegurar listas modificables
+    _conversations.clear();
 
     // Configurar callbacks de coordinación
     _setupCoordinationCallbacks();
@@ -184,11 +191,26 @@ $response
     for (final agent in _agents.values) {
       agent.messageStream.listen((message) {
         _allMessagesController.add(message);
-
-        // Agregar a conversación actual si existe
-        _currentConversation?.addMessage(message);
+        // Nota: No agregamos automáticamente al historial aquí porque
+        // no sabemos a qué conversación (contexto) pertenece.
+        // El historial se gestiona en processUserQuery.
       });
     }
+  }
+
+  /// Obtiene o crea una conversación para un contexto específico
+  AIConversation getConversation(String contextId) {
+    if (_currentUser == null) {
+      throw Exception('Usuario no configurado');
+    }
+
+    if (!_conversations.containsKey(contextId)) {
+      _conversations[contextId] = AIConversation(
+        id: contextId, // Usamos el contextId como ID de conversación para persistencia simple
+        userId: _currentUser!.id,
+      );
+    }
+    return _conversations[contextId]!;
   }
 
   /// Procesa una consulta del usuario enrutándola al agente apropiado
@@ -196,6 +218,8 @@ $response
     String query, {
     QueryContext context = QueryContext.general,
     String? preferredAgent,
+    String conversationId =
+        'coordinator', // Contexto de la conversación (ej. 'nutrition', 'workout')
   }) async {
     if (_currentUser == null) {
       throw Exception('Usuario no configurado');
@@ -222,13 +246,10 @@ $response
       throw Exception('No se pudo determinar el agente apropiado');
     }
 
-    // Crear o continuar conversación
-    if (_currentConversation == null) {
-      _currentConversation = AIConversation(userId: _currentUser!.id);
-      _conversations.add(_currentConversation!);
-    }
+    // Obtener la conversación correcta
+    final conversation = getConversation(conversationId);
 
-    // Agregar mensaje del usuario
+    // Agregar mensaje del usuario a esta conversación
     final userMessage = AIAgentMessage(
       agentId: 'user',
       agentName: _currentUser!.name,
@@ -236,14 +257,17 @@ $response
       content: query,
       type: MessageType.text,
     );
-    _currentConversation!.addMessage(userMessage);
+    conversation.addMessage(userMessage);
 
     // Procesar con el agente seleccionado
     final response = await selectedAgent.processQuery(
       userQuery,
       _currentUser!,
-      history: _currentConversation?.messages,
+      history: conversation.messages,
     );
+
+    // Agregar respuesta del agente a esta conversación
+    conversation.addMessage(response);
 
     _emitEvent(
       CoordinatorEvent(
@@ -497,7 +521,7 @@ Todos los agentes han coordinado sus respuestas para darte la mejor orientación
 
   /// Obtiene el historial de conversaciones
   List<AIConversation> getConversationHistory() {
-    return List.unmodifiable(_conversations);
+    return List.unmodifiable(_conversations.values);
   }
 
   /// Establece el usuario actual
@@ -519,7 +543,6 @@ Todos los agentes han coordinado sus respuestas para darte la mejor orientación
     _systemEventController.close();
     _allMessagesController.close();
     _conversations.clear();
-    _currentConversation = null;
     _currentUser = null;
     _isInitialized = false;
   }

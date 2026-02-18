@@ -90,13 +90,15 @@ class AIConversation {
   AIConversation({
     String? id,
     required this.userId,
-    this.messages = const [],
+    List<AIAgentMessage>? messages,
     DateTime? startedAt,
     this.endedAt,
     this.summary,
-    this.participatingAgents = const [],
+    List<String>? participatingAgents,
   }) : id = id ?? const Uuid().v4(),
-       startedAt = startedAt ?? DateTime.now();
+       messages = List<AIAgentMessage>.from(messages ?? []),
+       startedAt = startedAt ?? DateTime.now(),
+       participatingAgents = List<String>.from(participatingAgents ?? []);
 
   void addMessage(AIAgentMessage message) {
     messages.add(message);

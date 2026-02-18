@@ -169,7 +169,7 @@ Si la pregunta es peligrosa o médica grave, recomienda ver a un doctor real.
     return AIAgentMessage(
       agentId: id,
       agentName: name,
-      agentType: type.name,
+      agentType: this.type,
       content: content,
       type: type,
       metadata: metadata,

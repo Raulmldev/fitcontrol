@@ -20,6 +20,18 @@ class WorkoutScreen extends StatelessWidget {
             title: const Text('Entrenamiento'),
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.chat),
+                tooltip: 'Chat con Entrenador',
+                onPressed:
+                    () => Navigator.pushNamed(
+                      context,
+                      '/ai_chat',
+                      arguments: {'user': user, 'contextId': 'workout'},
+                    ),
+              ),
+            ],
           ),
           body: LayoutBuilder(
             builder: (context, constraints) {

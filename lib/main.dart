@@ -85,7 +85,11 @@ class MyApp extends StatelessWidget {
           switch (settings.name) {
             case '/ai_chat':
               return MaterialPageRoute(
-                builder: (context) => AIChatScreen(user: user),
+                builder:
+                    (context) => AIChatScreen(
+                      user: user,
+                      contextId: args?['contextId'] ?? 'coordinator',
+                    ),
               );
             case '/nutrition':
               return MaterialPageRoute(

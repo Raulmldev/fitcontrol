@@ -20,6 +20,18 @@ class HealthScreen extends StatelessWidget {
             title: const Text('Salud y Bienestar'),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.chat),
+                tooltip: 'Chat con Especialista en Salud',
+                onPressed:
+                    () => Navigator.pushNamed(
+                      context,
+                      '/ai_chat',
+                      arguments: {'user': user, 'contextId': 'health'},
+                    ),
+              ),
+            ],
           ),
           body: LayoutBuilder(
             builder: (context, constraints) {

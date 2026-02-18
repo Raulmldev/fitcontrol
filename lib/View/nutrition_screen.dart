@@ -24,6 +24,16 @@ class NutritionScreen extends StatelessWidget {
             foregroundColor: Colors.white,
             actions: [
               IconButton(
+                icon: const Icon(Icons.chat),
+                tooltip: 'Chat con Nutricionista',
+                onPressed:
+                    () => Navigator.pushNamed(
+                      context,
+                      '/ai_chat',
+                      arguments: {'user': user, 'contextId': 'nutrition'},
+                    ),
+              ),
+              IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () => controller.loadMockData(),
                 tooltip: 'Cargar Datos de Prueba',

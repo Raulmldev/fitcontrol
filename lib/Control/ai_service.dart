@@ -49,8 +49,9 @@ class AIService {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['choices'] != null && data['choices'].isNotEmpty) {
-          return data['choices'][0]['message']['content'] ??
-              'Lo siento, no pude generar una respuesta.';
+          final content = data['choices'][0]['message']['content'];
+
+          return content ?? 'Lo siento, no pude generar una respuesta.';
         }
       }
 

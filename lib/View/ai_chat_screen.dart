@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../Control/ai_coordinator.dart';
 import '../Control/ai_expert_team.dart';
@@ -9,8 +10,13 @@ import '../Model/user.dart';
 /// Permite al usuario interactuar con el equipo de 15 expertos de IA
 class AIChatScreen extends StatefulWidget {
   final User user;
+  final String contextId;
 
-  const AIChatScreen({super.key, required this.user});
+  const AIChatScreen({
+    super.key,
+    required this.user,
+    this.contextId = 'coordinator',
+  });
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -20,9 +26,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
   final AIAgentCoordinator _coordinator = AIAgentCoordinator();
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<AIAgentMessage> _messages = [];
+  List<AIAgentMessage> _messages = []; // Initialize empty, populate in init
   bool _isLoading = false;
   bool _showTeamInfo = false;
+
+  StreamSubscription? _subscription;
 
   @override
   void initState() {
@@ -34,19 +42,40 @@ class _AIChatScreenState extends State<AIChatScreen> {
     await _coordinator.initialize(user: widget.user);
     _coordinator.setUser(widget.user);
 
+    // Cargar historial de la conversación específica
+    final conversation = _coordinator.getConversation(widget.contextId);
+    if (mounted) {
+      setState(() {
+        _messages = List.from(conversation.messages);
+      });
+    }
+
     // Escuchar mensajes de todos los agentes
-    _coordinator.allMessages.listen((message) {
+    _subscription = _coordinator.allMessages.listen((message) {
       if (mounted) {
-        setState(() {
-          _messages.add(message);
-        });
-        _scrollToBottom();
+        // Solo agregar si no está ya en la lista (evitar duplicados de processQuery)
+        // Nota: Idealmente filtraríamos por contexto, pero por ahora mostramos todos
+        // los mensajes relevantes que llegan al stream.
+        if (!_messages.any((m) => m.id == message.id)) {
+          // Opcional: Filtrar si el mensaje no pertenece a este contexto
+          // Por ahora lo permitimos para depuración
+          setState(() {
+            _messages.add(message);
+          });
+          _scrollToBottom();
+        }
       }
     });
 
-    // Mensaje de bienvenida
-    _addWelcomeMessage();
+    // Mensaje de bienvenida solo si es nueva conversación
+    if (_messages.isEmpty) {
+      _addWelcomeMessage();
+    }
   }
+  // ... (rest of the file remains same, just showing the subscription usage)
+
+  // We need to verify where to put the definition of _subscription.
+  // It should be in the State class member variables.
 
   void _addWelcomeMessage() {
     final welcomeMessage = AIAgentMessage(
@@ -99,19 +128,26 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
     setState(() {
       _messages.add(userMessage);
       _messageController.clear();
+      _isLoading = true; // Ensure loading is true
     });
 
     _scrollToBottom();
 
     try {
-      // Procesar con el coordinador
-      final response = await _coordinator.processUserQuery(text);
+      // Procesar con el coordinador en el contexto específico
+      final response = await _coordinator.processUserQuery(
+        text,
+        conversationId: widget.contextId,
+      );
 
       if (mounted) {
-        setState(() {
-          _messages.add(response);
-        });
-        _scrollToBottom();
+        // Verificar duplicados (si no llegó por stream)
+        if (!_messages.any((m) => m.id == response.id)) {
+          setState(() {
+            _messages.add(response);
+          });
+          _scrollToBottom();
+        } else {}
       }
     } catch (e) {
       if (mounted) {
@@ -119,8 +155,7 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
           agentId: 'system',
           agentName: 'Sistema',
           agentType: 'system',
-          content:
-              'Lo siento, ha ocurrido un error. Por favor intenta de nuevo.',
+          content: 'Error: $e',
           type: MessageType.warning,
         );
 
@@ -198,10 +233,31 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
 
   @override
   Widget build(BuildContext context) {
+    String title;
+    Color color;
+
+    switch (widget.contextId) {
+      case 'nutrition':
+        title = 'Equipo de Nutrición';
+        color = Colors.green;
+        break;
+      case 'workout':
+        title = 'Equipo de Entrenamiento';
+        color = Colors.blue;
+        break;
+      case 'health':
+        title = 'Equipo de Salud';
+        color = Colors.red;
+        break;
+      default:
+        title = 'Coordinador FitControl';
+        color = Colors.deepPurple;
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Asistente IA FitControl'),
-        backgroundColor: Colors.deepPurple,
+        title: Text(title),
+        backgroundColor: color,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -431,6 +487,7 @@ Escribe tu pregunta y el agente más apropiado te responderá. ¡Todos trabajan 
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     // No se llama _coordinator.dispose() porque es un singleton
