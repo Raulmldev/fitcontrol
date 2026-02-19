@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../Model/user.dart';
 import '../Model/health_metrics.dart';
+import '../Control/database_service.dart';
 
 /// Pantalla para registrar signos vitales y métricas de salud
 class LogVitalsScreen extends StatefulWidget {
@@ -91,8 +92,8 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
         notes: _notesController.text.isNotEmpty ? _notesController.text : null,
       );
 
-      // Simular guardado (aquí iría la llamada a la base de datos)
-      await Future.delayed(const Duration(seconds: 1));
+      // Guardar en la base de datos
+      await DatabaseService().saveHealthMetrics(metrics);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

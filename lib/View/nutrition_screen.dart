@@ -128,6 +128,19 @@ class _NutritionScreenState extends State<NutritionScreen> {
     // Responsive layout helper
     final isWide = MediaQuery.of(context).size.width > 600;
 
+    // Calcular totales del día
+    double totalCalories = 0;
+    double totalProtein = 0;
+    double totalCarbs = 0;
+    double totalFat = 0;
+
+    for (final meal in _todayMeals) {
+      totalCalories += meal.totalCalories;
+      totalProtein += meal.totalProtein;
+      totalCarbs += meal.totalCarbs;
+      totalFat += meal.totalFat;
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nutrición'),
@@ -147,9 +160,9 @@ class _NutritionScreenState extends State<NutritionScreen> {
             const SizedBox(height: 24),
             
             if (isWide)
-              _buildWideLayout(context)
+      _buildWideLayout(context, totalCalories, totalProtein, totalCarbs, totalFat)
             else
-              _buildMobileLayout(context),
+      _buildMobileLayout(context, totalCalories, totalProtein, totalCarbs, totalFat),
           ],
         ),
       ),
@@ -172,89 +185,102 @@ class _NutritionScreenState extends State<NutritionScreen> {
           children: [
             Row(
               children: [
-                Icon(
+                const Icon(
                   Icons.search,
                   color: Colors.green,
                   size: 24,
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  'Buscar Alimento con IA',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                const Expanded(
+                  child: Text(
+                    'Buscar Alimento con IA',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
               ],
             ),
             const SizedBox(height: 16),
             
             // Campo de búsqueda
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Ej: pollo, arroz, manzana...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      prefixIcon: const Icon(Icons.restaurant),
-                      suffixIcon: _isLoading 
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _selectedFood = null;
-                                });
-                              },
-                            ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onSubmitted: (value) => _searchFood(value),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _isLoading 
-                      ? null 
-                      : () => _searchFood(_searchController.text),
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isSmall = constraints.maxWidth < 400;
+                return Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Ej: pollo, arroz...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
-                        )
-                      : const Icon(Icons.search),
-                  label: const Text('Buscar'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
+                          prefixIcon: isSmall ? null : const Icon(Icons.restaurant),
+                          suffixIcon: _isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                )
+                              : IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {
+                                      _selectedFood = null;
+                                    });
+                                  },
+                                ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (value) => _searchFood(value),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isLoading
+                          ? null
+                          : () => _searchFood(_searchController.text),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmall ? 12 : 20,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : (isSmall ? const Icon(Icons.search) : const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.search),
+                                SizedBox(width: 4),
+                                Text('Buscar'),
+                              ],
+                            )),
                     ),
-                  ),
-                ),
-              ],
+                  ],
+                );
+              }
             ),
             
             // Historial de búsquedas
@@ -529,6 +555,30 @@ class _NutritionScreenState extends State<NutritionScreen> {
     }
   }
 
+  Future<void> _deleteMeal(String mealId) async {
+    try {
+      await DatabaseService().deleteMeal(mealId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Comida eliminada'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        _loadTodayMeals();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _saveMealRegistration() async {
     if (_selectedFood == null) return;
     
@@ -647,28 +697,40 @@ class _NutritionScreenState extends State<NutritionScreen> {
     );
   }
 
-  Widget _buildWideLayout(BuildContext context) {
+  Widget _buildWideLayout(BuildContext context, double totalCalories,
+      double totalProtein, double totalCarbs, double totalFat) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _buildDailyProgress(context)),
+        Expanded(
+            child: _buildDailyProgress(
+                context, totalCalories, totalProtein, totalCarbs, totalFat)),
         const SizedBox(width: 24),
         Expanded(child: _buildMealList(context)),
       ],
     );
   }
 
-  Widget _buildMobileLayout(BuildContext context) {
+  Widget _buildMobileLayout(BuildContext context, double totalCalories,
+      double totalProtein, double totalCarbs, double totalFat) {
     return Column(
       children: [
-        _buildDailyProgress(context),
+        _buildDailyProgress(
+            context, totalCalories, totalProtein, totalCarbs, totalFat),
         const SizedBox(height: 24),
         _buildMealList(context),
       ],
     );
   }
 
-  Widget _buildDailyProgress(BuildContext context) {
+  Widget _buildDailyProgress(BuildContext context, double totalCalories,
+      double totalProtein, double totalCarbs, double totalFat) {
+    // Estimación de objetivos de macros basada en calorías objetivo (30/40/30)
+    final targetCalories = widget.user.targetCalories.toDouble();
+    final targetProtein = (targetCalories * 0.30) / 4; // 30% protein
+    final targetCarbs = (targetCalories * 0.40) / 4;   // 40% carbs
+    final targetFat = (targetCalories * 0.30) / 9;     // 30% fat
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -682,16 +744,17 @@ class _NutritionScreenState extends State<NutritionScreen> {
             const SizedBox(height: 16),
             _buildMacroBar(
               'Calorías',
-              1200.0,
-              widget.user.targetCalories.toDouble(),
+              totalCalories,
+              targetCalories,
               Colors.green,
             ),
             const SizedBox(height: 12),
-            _buildMacroBar('Proteínas', 80.0, (widget.user.targetCalories * 0.15), Colors.blue),
+            _buildMacroBar('Proteínas', totalProtein, targetProtein, Colors.blue),
             const SizedBox(height: 12),
-            _buildMacroBar('Carbohidratos', 150.0, (widget.user.targetCalories * 0.5), Colors.orange),
+            _buildMacroBar(
+                'Carbohidratos', totalCarbs, targetCarbs, Colors.orange),
             const SizedBox(height: 12),
-            _buildMacroBar('Grasas', 40.0, (widget.user.targetCalories * 0.25), Colors.red),
+            _buildMacroBar('Grasas', totalFat, targetFat, Colors.red),
           ],
         ),
       ),
@@ -710,8 +773,18 @@ class _NutritionScreenState extends State<NutritionScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text('${current.toInt()} / ${target.toInt()} g/kcal'),
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${current.toInt()} / ${target.toInt()} g/kcal',
+              style: const TextStyle(fontSize: 12),
+            ),
           ],
         ),
         const SizedBox(height: 6),
@@ -747,7 +820,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
       );
     }
 
-    // Calcular totales
+    // Calcular totales para el resumen al final de la lista
     double totalCalories = 0;
     double totalProtein = 0;
     double totalCarbs = 0;
@@ -873,6 +946,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
                       mealTypeNames[type]!,
                       mealName,
                       meal.totalCalories.toInt(),
+                      onDelete: () => _deleteMeal(meal.id),
                     ),
                     const Divider(),
                   ],
@@ -959,6 +1033,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
     String description,
     int calories, {
     bool isPending = false,
+    VoidCallback? onDelete,
   }) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -968,7 +1043,38 @@ class _NutritionScreenState extends State<NutritionScreen> {
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(description),
-      trailing: Text('$calories kcal'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$calories kcal'),
+          if (onDelete != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Eliminar registro'),
+                    content: const Text('¿Estás seguro de que quieres eliminar esta comida?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancelar'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          onDelete();
+                        },
+                        child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
     );
   }
 }

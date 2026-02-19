@@ -497,7 +497,8 @@ El resto del equipo de 15 expertos también está disponible para coordinarse co
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    _coordinator.dispose();
+    // No disponemos el coordinador porque es un Singleton global
+    // y sus streams deben permanecer abiertos para futuras interacciones
     super.dispose();
   }
 }

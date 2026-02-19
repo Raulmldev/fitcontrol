@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:collection';
+import 'package:flutter/foundation.dart';
 import '../Model/ai_message.dart';
 import '../Model/user.dart';
 import 'ai_agent_base.dart';
 import 'health_wellness_agent.dart';
 import 'nutrition_agent.dart';
 import 'personal_trainer_agent.dart';
+import 'ai_service.dart';
 
 /// Sistema central de coordinación multi-agente para FitControl
 ///
@@ -205,7 +207,7 @@ $response
     if (preferredAgent != null && _agents.containsKey(preferredAgent)) {
       selectedAgent = _agents[preferredAgent];
     } else {
-      selectedAgent = _selectAgentForContext(context, query);
+      selectedAgent = await _selectAgentIntelligently(context, query);
     }
 
     if (selectedAgent == null) {
@@ -246,83 +248,123 @@ $response
     return response;
   }
 
-  /// Selecciona el mejor agente según el contexto de la consulta
-  AIAgentBase? _selectAgentForContext(QueryContext context, String query) {
+  /// Selecciona el agente de forma inteligente (heurística + IA como fallback)
+  Future<AIAgentBase?> _selectAgentIntelligently(QueryContext context, String query) async {
+    // 1. Intentar con heurística rápida
+    final result = _selectAgentByKeywords(context, query);
+
+    // Si la confianza es alta (score > 1) o el contexto es explícito, usarlo
+    if (context != QueryContext.general || result.maxScore > 1) {
+      return result.agent;
+    }
+
+    // 2. Fallback: Preguntar a la IA para enrutamiento (Groq es rápido)
+    try {
+      final aiService = AIService();
+      final prompt = '''
+Eres el Coordinador de FitControl. Tu tarea es asignar la siguiente consulta del usuario al experto más adecuado.
+Expertos disponibles:
+- Dra. Elena Martínez (nutrition): Dietas, alimentos, calorías, recetas.
+- Carlos Rodríguez (personal_trainer): Ejercicio, rutinas, técnica, lesiones.
+- Dr. Antonio Vásquez (health_specialist): Salud, vitales, sueño, estrés.
+
+Consulta: "$query"
+
+Responde ÚNICAMENTE con el ID del experto: "nutrition", "personal_trainer" o "health_specialist".
+''';
+      final response = await aiService.chat(systemPrompt: prompt, userMessage: "Asigna esta consulta.");
+
+      if (response.contains('nutrition')) return nutritionAgent;
+      if (response.contains('personal_trainer')) return trainerAgent;
+      if (response.contains('health_specialist')) return healthAgent;
+    } catch (e) {
+      debugPrint('Error en enrutamiento IA: $e');
+    }
+
+    // 3. Último recurso: devolver el resultado de la heurística
+    return result.agent;
+  }
+
+  /// Selecciona el mejor agente según palabras clave
+  _AgentSelectionResult _selectAgentByKeywords(QueryContext context, String query) {
     final queryLower = query.toLowerCase();
 
-    // Palabras clave para cada agente
+    // Palabras clave ampliadas para cada agente
     final nutritionKeywords = [
-      'comida',
-      'dieta',
-      'nutrición',
-      'calorías',
-      'proteína',
-      'carbohidrato',
-      'grasa',
-      'compra',
-      'lista',
-      'alimento',
+      'comida', 'dieta', 'nutrición', 'calorías', 'proteína', 'carbohidrato',
+      'grasa', 'compra', 'lista', 'alimento', 'receta', 'desayuno', 'almuerzo',
+      'cena', 'snack', 'merienda', 'hambre', 'comer', 'beber', 'agua', 'ayuno',
+      'suplemento', 'vitaminas', 'fruta', 'verdura', 'carne', 'pescado', 'macros'
     ];
 
     final workoutKeywords = [
-      'ejercicio',
-      'entrenamiento',
-      'rutina',
-      'gym',
-      'gimnasio',
-      'pesas',
-      'cardio',
-      'músculo',
-      'fuerza',
+      'ejercicio', 'entrenamiento', 'rutina', 'gym', 'gimnasio', 'pesas',
+      'cardio', 'músculo', 'fuerza', 'hipertrofia', 'serie', 'repetición',
+      'descanso', 'pierna', 'brazo', 'espalda', 'pecho', 'hombro', 'abdomen',
+      'flexibilidad', 'estiramiento', 'yoga', 'hiit', 'correr', 'nadar', 'bici'
     ];
 
     final healthKeywords = [
-      'salud',
-      'presión',
-      'ritmo',
-      'peso',
-      'grasa',
-      'sueño',
-      'estrés',
-      'energía',
-      'vital',
+      'salud', 'presión', 'ritmo', 'peso', 'grasa', 'sueño', 'estrés',
+      'energía', 'vital', 'médico', 'doctor', 'corazón', 'pulso', 'tensión',
+      'dolor', 'lesión', 'cansancio', 'fatiga', 'ánimo', 'psicología', 'hábito',
+      'sangre', 'glucosa', 'colesterol', 'respiración', 'bienestar'
     ];
 
-    // Contar coincidencias
+    // Contar coincidencias con pesos
     int nutritionScore = 0;
     int workoutScore = 0;
     int healthScore = 0;
 
     for (final keyword in nutritionKeywords) {
-      if (queryLower.contains(keyword)) nutritionScore++;
+      if (queryLower.contains(keyword)) {
+        nutritionScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     for (final keyword in workoutKeywords) {
-      if (queryLower.contains(keyword)) workoutScore++;
+      if (queryLower.contains(keyword)) {
+        workoutScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     for (final keyword in healthKeywords) {
-      if (queryLower.contains(keyword)) healthScore++;
+      if (queryLower.contains(keyword)) {
+        healthScore += queryLower.startsWith(keyword) ? 2 : 1;
+      }
     }
 
     // Decidir según puntuación o contexto explícito
+    AIAgentBase? agent;
+    int maxScore = 0;
+
     switch (context) {
       case QueryContext.nutrition:
-        return nutritionAgent;
+        agent = nutritionAgent;
+        maxScore = 10;
+        break;
       case QueryContext.workout:
-        return trainerAgent;
+        agent = trainerAgent;
+        maxScore = 10;
+        break;
       case QueryContext.health:
-        return healthAgent;
+        agent = healthAgent;
+        maxScore = 10;
+        break;
       default:
         // Determinar por puntuación
         if (nutritionScore >= workoutScore && nutritionScore >= healthScore) {
-          return nutritionAgent;
+          agent = nutritionAgent;
+          maxScore = nutritionScore;
         } else if (workoutScore >= healthScore) {
-          return trainerAgent;
+          agent = trainerAgent;
+          maxScore = workoutScore;
         } else {
-          return healthAgent;
+          agent = healthAgent;
+          maxScore = healthScore;
         }
     }
+    return _AgentSelectionResult(agent, maxScore);
   }
 
   /// Genera recomendaciones de todos los agentes
@@ -523,6 +565,12 @@ class CoordinatorEvent {
     this.data,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
+}
+
+class _AgentSelectionResult {
+  final AIAgentBase? agent;
+  final int maxScore;
+  _AgentSelectionResult(this.agent, this.maxScore);
 }
 
 /// Tipos de eventos del coordinador

@@ -8,17 +8,17 @@ class AIService {
 
   final Dio _dio = Dio(
     BaseOptions(
-      baseUrl: ApiConfig.deepSeekBaseUrl,
+      baseUrl: ApiConfig.groqBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${ApiConfig.deepSeekApiKey}',
+        'Authorization': 'Bearer ${ApiConfig.groqApiKey}',
       },
     ),
   );
 
-  /// Sends a chat message to the DeepSeek API
+  /// Sends a chat message to the Groq API (using Llama 3)
   /// [systemPrompt] - The persona/instructions for the agent
   /// [userMessage] - The current query from the user
   /// [history] - (Optional) Previous messages for context
@@ -43,7 +43,11 @@ class AIService {
 
       final response = await _dio.post(
         '/chat/completions',
-        data: {'model': 'deepseek-chat', 'messages': messages, 'stream': false},
+        data: {
+          'model': 'llama3-70b-8192',
+          'messages': messages,
+          'stream': false,
+        },
       );
 
       if (response.statusCode == 200) {

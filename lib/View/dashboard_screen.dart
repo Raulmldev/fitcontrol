@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import '../Control/ai_expert_team.dart';
+import '../Control/database_service.dart';
 import '../Model/user.dart';
+import '../Model/health_metrics.dart';
 import '../Widgets/how_ai_works_modal.dart';
 import 'recommendations_screen.dart';
 
 /// Vista del Dashboard Principal de FitControl
 ///
 /// Muestra un resumen de todos los módulos y acceso rápido a funciones
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final User user;
   final VoidCallback onLogout;
 
@@ -16,6 +18,28 @@ class DashboardScreen extends StatelessWidget {
     required this.user,
     required this.onLogout,
   });
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  HealthMetrics? _latestMetrics;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestHealth();
+  }
+
+  Future<void> _loadLatestHealth() async {
+    final metrics = await DatabaseService().getLatestHealthMetrics(widget.user.id);
+    if (mounted) {
+      setState(() {
+        _latestMetrics = metrics;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: onLogout,
+            onPressed: widget.onLogout,
             tooltip: 'Cerrar sesión',
           ),
         ],
@@ -109,7 +133,7 @@ class DashboardScreen extends StatelessWidget {
             () => Navigator.pushNamed(
               context,
               '/ai_chat',
-              arguments: {'user': user},
+              arguments: {'user': widget.user},
             ),
         icon: const Icon(Icons.chat),
         label: const Text('Hablar con IA'),
@@ -129,7 +153,7 @@ class DashboardScreen extends StatelessWidget {
               radius: 30,
               backgroundColor: Colors.deepPurple,
               child: Text(
-                user.name.substring(0, 1).toUpperCase(),
+                widget.user.name.substring(0, 1).toUpperCase(),
                 style: const TextStyle(
                   fontSize: 24,
                   color: Colors.white,
@@ -143,7 +167,7 @@ class DashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '¡Hola, ${user.name.split(' ')[0]}!',
+                    '¡Hola, ${widget.user.name.split(' ')[0]}!',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -192,7 +216,7 @@ class DashboardScreen extends StatelessWidget {
                  onTap: () => Navigator.push(
                    context,
                    MaterialPageRoute(
-                     builder: (context) => RecommendationsScreen(user: user),
+                     builder: (context) => RecommendationsScreen(user: widget.user),
                    ),
                  ),
                ),
@@ -366,11 +390,14 @@ class DashboardScreen extends StatelessWidget {
               subtitle: 'Plan de comidas',
               color: Colors.green,
               onTap:
-                  () => Navigator.pushNamed(
-                    context,
-                    '/nutrition',
-                    arguments: {'user': user},
-                  ),
+                  () async {
+                    await Navigator.pushNamed(
+                      context,
+                      '/nutrition',
+                      arguments: {'user': widget.user},
+                    );
+                    _loadLatestHealth();
+                  }
             ),
             _buildModuleCard(
               context,
@@ -382,7 +409,7 @@ class DashboardScreen extends StatelessWidget {
                   () => Navigator.pushNamed(
                     context,
                     '/workout',
-                    arguments: {'user': user},
+                    arguments: {'user': widget.user},
                   ),
             ),
             _buildModuleCard(
@@ -392,11 +419,14 @@ class DashboardScreen extends StatelessWidget {
               subtitle: 'Signos vitales',
               color: Colors.red,
               onTap:
-                  () => Navigator.pushNamed(
-                    context,
-                    '/health',
-                    arguments: {'user': user},
-                  ),
+                  () async {
+                    await Navigator.pushNamed(
+                      context,
+                      '/health',
+                      arguments: {'user': widget.user},
+                    );
+                    _loadLatestHealth();
+                  }
             ),
             _buildModuleCard(
               context,
@@ -467,7 +497,7 @@ class DashboardScreen extends StatelessWidget {
             () => Navigator.pushNamed(
               context,
               '/conclusion',
-              arguments: {'user': user},
+              arguments: {'user': widget.user},
             ),
         icon: const Icon(Icons.assessment),
         label: const Text('VER CONCLUSIÓN Y REPORTE INTEGRAL'),
@@ -587,8 +617,9 @@ class DashboardScreen extends StatelessWidget {
               icon: Icons.favorite,
               color: Colors.red,
               title: 'Dr. Antonio Vásquez',
-              content:
-                  'Tu presión arterial ha estado excelente esta semana. ¡Sigue así!',
+              content: _latestMetrics != null
+                  ? 'Tu último registro de ${_latestMetrics!.bloodPressureSystolic?.toInt()}/${_latestMetrics!.bloodPressureDiastolic?.toInt()} mmHg es excelente.'
+                  : 'Registra tus signos vitales hoy para recibir un análisis personalizado.',
             ),
           ],
         ),
