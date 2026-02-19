@@ -152,12 +152,12 @@ class WorkoutScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    // Chat with trainer
-                  },
-                  child: const Text('Consultar Entrenador'),
-                ),
+                //TextButton(
+                //onPressed: () {
+                // Chat with trainer
+                //},
+                //child: const Text('Consultar Entrenador'),
+                //),
               ],
             ),
             const SizedBox(height: 16),
